@@ -90,11 +90,20 @@ const addressApi = require("./app/api/addressApi.js");
 const electrumAddressApi = require("./app/api/electrumAddressApi.js");
 const appStats = require("./app/appStats.js");
 const btcQuotes = require("./app/coins/btcQuotes.js");
+const btcHolidays = require("./app/coins/btcHolidays.js");
 const auth = require('./app/auth.js');
 const sso = require('./app/sso.js');
 const markdown = require("markdown-it")();
 const v8 = require("v8");
 var compression = require("compression");
+
+const appUtils = require("@janoside/app-utils");
+const s3Utils = appUtils.s3Utils;
+
+let cdnS3Bucket = null;
+if (config.cdn.active) {
+	cdnS3Bucket = s3Utils.createBucket(config.cdn.s3Bucket, config.cdn.s3BucketPath);
+}
 
 require("./app/currencies.js");
 
@@ -211,6 +220,57 @@ if (config.baseUrl != '/') {
 	expressApp.get('/', (req, res) => res.redirect(config.baseUrl));
 }
 
+
+// if a CDN is configured, these assets will be uploaded at launch, then referenced from there
+const cdnItems = [
+	[`style/dark.css`, `text/css`, "utf8"],
+	[`style/light.css`, `text/css`, "utf8"],
+	[`style/highlight.min.css`, `text/css`, "utf8"],
+	[`style/dataTables.bootstrap4.min.css`, `text/css`, "utf8"],
+	[`style/bootstrap-icons.css`, `text/css`, "utf8"],
+
+	[`js/bootstrap.bundle.min.js`, `text/javascript`, "utf8"],
+	[`js/chart.min.js`, `text/javascript`, "utf8"],
+	[`js/jquery.min.js`, `text/javascript`, "utf8"],
+	[`js/site.js`, `text/javascript`, "utf8"],
+	[`js/highlight.pack.js`, `text/javascript`, "utf8"],
+	[`js/chartjs-adapter-moment.min.js`, `text/javascript`, "utf8"],
+	[`js/jquery.dataTables.min.js`, `text/javascript`, "utf8"],
+	[`js/dataTables.bootstrap4.min.js`, `text/javascript`, "utf8"],
+	[`js/moment.min.js`, `text/javascript`, "utf8"],
+	[`js/sentry.min.js`, `text/javascript`, "utf8"],
+	[`js/decimal.js`, `text/javascript`, "utf8"],
+
+	[`img/network-mainnet/logo.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-mainnet/coin-icon.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-mainnet/apple-touch-icon.png`, `image/png`, "binary"],
+	[`img/network-mainnet/favicon-16x16.png`, `image/png`, "binary"],
+	[`img/network-mainnet/favicon-32x32.png`, `image/png`, "binary"],
+	[`img/network-testnet/logo.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-testnet/coin-icon.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-signet/logo.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-signet/coin-icon.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-regtest/logo.svg`, `image/svg+xml`, "utf8"],
+	[`img/network-regtest/coin-icon.svg`, `image/svg+xml`, "utf8"],
+
+	[`img/network-mainnet/favicon.ico`, `image/x-icon`, "binary"],
+	[`img/network-testnet/favicon.ico`, `image/x-icon`, "binary"],
+	[`img/network-signet/favicon.ico`, `image/x-icon`, "binary"],
+	[`img/network-regtest/favicon.ico`, `image/x-icon`, "binary"],
+
+	[`font/bootstrap-icons.woff`, `font/woff`, "binary"],
+	[`font/bootstrap-icons.woff2`, `font/woff2`, "binary"],
+
+	[`leaflet/leaflet.js`, `text/javascript`, "utf8"],
+	[`leaflet/leaflet.css`, `text/css`, "utf8"],
+];
+
+const cdnFilepathMap = {};
+cdnItems.forEach(item => {
+	cdnFilepathMap[item[0]] = true;
+});
+
+
 process.on("unhandledRejection", (reason, p) => {
 	debugLog("Unhandled Rejection at: Promise", p, "reason:", reason, "stack:", (reason != null ? reason.stack : "null"));
 });
@@ -309,6 +369,31 @@ function loadHistoricalDataForChain(chain) {
 	}
 }
 
+function loadHolidays(chain) {
+	debugLog(`Loading holiday data`);
+
+	global.btcHolidays = btcHolidays;
+	global.btcHolidays.byDay = {};
+	global.btcHolidays.sortedDays = [];
+	global.btcHolidays.sortedItems = [...btcHolidays.items];
+	global.btcHolidays.sortedItems.sort((a, b) => a.date.localeCompare(b.date));
+
+	global.btcHolidays.items.forEach(function(item) {
+		let day = item.date.substring(5);
+
+		if (!global.btcHolidays.sortedDays.includes(day)) {
+			global.btcHolidays.sortedDays.push(day);
+			global.btcHolidays.sortedDays.sort();
+		}
+
+		if (global.btcHolidays.byDay[day] == undefined) {
+			global.btcHolidays.byDay[day] = [];
+		}
+
+		global.btcHolidays.byDay[day].push(item);
+	});
+}
+
 function verifyRpcConnection() {
 	if (!global.activeBlockchain) {
 		debugLog(`Verifying RPC connection...`);
@@ -394,7 +479,16 @@ async function onRpcConnectionVerified(getnetworkinfo, getblockchaininfo) {
 	// load historical/fun items for this chain
 	loadHistoricalDataForChain(global.activeBlockchain);
 
+	loadHolidays();
+
 	if (global.activeBlockchain == "main") {
+		loadDifficultyHistory(getblockchaininfo.blocks);
+
+		// refresh difficulty history periodically
+		// TODO: refresh difficulty history when there's a new block and height % 2016 == 0
+		setInterval(loadDifficultyHistory, 15 * 60 * 1000);
+
+
 		if (global.exchangeRates == null) {
 			utils.refreshExchangeRates();
 		}
@@ -415,6 +509,55 @@ async function onRpcConnectionVerified(getnetworkinfo, getblockchaininfo) {
 	// UTXO pull
 	refreshUtxoSetSummary();
 	setInterval(refreshUtxoSetSummary, 30 * 60 * 1000);
+
+
+
+	if (false) {
+		var zmq = require("zeromq");
+		var sock = zmq.socket("sub");
+
+		sock.connect("tcp://192.168.1.1:28333");
+		console.log("Worker connected to port 28333");
+
+		sock.on("message", function(topic, message) {
+			console.log(Buffer.from(topic).toString("ascii") + " - " + Buffer.from(message).toString("hex"));
+		});
+
+		//sock.subscribe('rawtx');
+	}
+}
+
+async function loadDifficultyHistory(tipBlockHeight=null) {
+	if (!tipBlockHeight) {
+		let getblockchaininfo = await coreApi.getBlockchainInfo();
+
+		tipBlockHeight = getblockchaininfo.blocks;
+	}
+
+	if (config.slowDeviceMode) {
+		debugLog("Skipping performance-intensive task: load difficulty history. This is skipped due to the flag 'slowDeviceMode' which defaults to 'true' to protect slow nodes. Set this flag to 'false' to enjoy difficulty history details.");
+
+		return;
+	}
+
+	let height = 0;
+	let heights = [];
+
+	while (height <= tipBlockHeight) {
+		heights.push(height);
+		height += global.coinConfig.difficultyAdjustmentBlockCount;
+	}
+
+	global.difficultyHistory = await coreApi.getDifficultyByBlockHeights(heights);
+	
+	global.athDifficulty = 0;
+	for (let i = 0; i < heights.length; i++) {
+		if (global.difficultyHistory[`${heights[i]}`].difficulty > global.athDifficulty) {	
+			global.athDifficulty = global.difficultyHistory[heights[i]].difficulty;
+		}
+	}
+
+	debugLog("ATH difficulty: " + global.athDifficulty);
 }
 
 var txindexCheckCount = 0;
@@ -482,13 +625,13 @@ async function assessTxindexAvailability() {
 async function refreshUtxoSetSummary() {
 	if (config.slowDeviceMode) {
 		if (!global.getindexinfo || !global.getindexinfo.coinstatsindex) {
-		global.utxoSetSummary = null;
-		global.utxoSetSummaryPending = false;
+			global.utxoSetSummary = null;
+			global.utxoSetSummaryPending = false;
 
-		debugLog("Skipping performance-intensive task: fetch UTXO set summary. This is skipped due to the flag 'slowDeviceMode' which defaults to 'true' to protect slow nodes. Set this flag to 'false' to enjoy UTXO set summary details.");
+			debugLog("Skipping performance-intensive task: fetch UTXO set summary. This is skipped due to the flag 'slowDeviceMode' which defaults to 'true' to protect slow nodes. Set this flag to 'false' to enjoy UTXO set summary details.");
 
-		return;
-	}
+			return;
+		}
 	}
 
 	// flag that we're working on calculating UTXO details (to differentiate cases where we don't have the details and we're not going to try computing them)
@@ -573,7 +716,7 @@ function refreshNetworkVolumes() {
 }
 
 
-expressApp.onStartup = function() {
+expressApp.onStartup = async () => {
 	global.appStartTime = new Date().getTime();
 
 	global.config = config;
@@ -610,27 +753,29 @@ expressApp.onStartup = function() {
 
 
 	if (global.sourcecodeVersion == null && fs.existsSync('.git')) {
-		simpleGit(".").log(["-n 1"], function(err, log) {
-			if (err) {
-				utils.logError("3fehge9ee", err, {desc:"Error accessing git repo"});
+		try {
+			let log = await simpleGit(".").log(["-n 1"]);
 
-				global.cacheId = global.appVersion;
-				debugLog(`Error getting sourcecode version, continuing to use default cacheId '${global.cacheId}'`);
+			global.sourcecodeVersion = log.all[0].hash.substring(0, 10);
+			global.sourcecodeDate = log.all[0].date.substring(0, "0000-00-00".length);
 
-				debugLog(`Starting ${global.coinConfig.ticker} RPC Explorer, v${global.appVersion} (code: unknown commit) at http://${config.host}:${config.port}${config.baseUrl}`);
+			global.cacheId = `${global.sourcecodeDate}-${global.sourcecodeVersion}`;
 
-			} else {
-				global.sourcecodeVersion = log.all[0].hash.substring(0, 10);
-				global.cacheId = log.all[0].hash.substring(0, 10);
-				global.sourcecodeDate = log.all[0].date.substring(0, "0000-00-00".length);
+			debugLog(`Using sourcecode metadata as cacheId: '${global.cacheId}'`);
 
-				debugLog(`Using sourcecode version as cacheId: '${global.cacheId}'`);
+			debugLog(`Starting ${global.coinConfig.ticker} RPC Explorer, v${global.appVersion} (commit: '${global.sourcecodeVersion}', date: ${global.sourcecodeDate}) at http://${config.host}:${config.port}${config.baseUrl}`);
 
-				debugLog(`Starting ${global.coinConfig.ticker} RPC Explorer, v${global.appVersion} (commit: '${global.sourcecodeVersion}', date: ${global.sourcecodeDate}) at http://${config.host}:${config.port}${config.baseUrl}`);
-			}
 
-			expressApp.continueStartup();
-		});
+		} catch (err) {
+			utils.logError("3fehge9ee", err, {desc:"Error accessing git repo"});
+
+			global.cacheId = global.appVersion;
+			debugLog(`Error getting sourcecode version, continuing to use default cacheId '${global.cacheId}'`);
+
+			debugLog(`Starting ${global.coinConfig.ticker} RPC Explorer, v${global.appVersion} (code: unknown commit) at http://${config.host}:${config.port}${config.baseUrl}`);
+		}
+		
+		expressApp.continueStartup();
 
 	} else {
 		global.cacheId = global.appVersion;
@@ -639,6 +784,65 @@ expressApp.onStartup = function() {
 		debugLog(`Starting ${global.coinConfig.ticker} RPC Explorer, v${global.appVersion} at http://${config.host}:${config.port}${config.baseUrl}`);
 
 		expressApp.continueStartup();
+	}
+
+	if (config.cdn.active && config.cdn.s3Bucket) {
+		debugLog(`Configuring CDN assets; uploading ${cdnItems.length} assets to S3...`);
+
+		const s3Path = (filepath) => { return `${global.cacheId}/${filepath}`; }
+
+		const uploadedItems = [];
+		const existingItems = [];
+		const errorItems = [];
+
+		const uploadAssetIfNeeded = async (filepath, contentType, encoding) => {
+			try {
+				let absoluteFilepath = path.join(process.cwd(), "public", filepath);
+				let s3path = s3Path(filepath);
+				
+				const existingAsset = await cdnS3Bucket.get(s3path);
+
+				if (existingAsset) {
+					existingItems.push(filepath);
+
+					//debugLog(`Asset ${filepath} already in S3, skipping upload.`);
+
+				} else {
+					let fileData = fs.readFileSync(absoluteFilepath, {encoding: encoding, flag:'r'});
+					let fileBuffer = Buffer.from(fileData, encoding);
+
+					let options = {
+						"ContentType": contentType,
+						"CacheControl": "max-age=315360000"
+					};
+
+					await cdnS3Bucket.put(fileBuffer, s3path, options);
+
+					uploadedItems.push(filepath);
+
+					//debugLog(`Uploaded ${filepath} to S3.`);
+				}
+			} catch (e) {
+				errorItems.push(filepath);
+
+				debugErrorLog(`Error uploading asset to S3: ${JSON.stringify(filepath)}`, e);
+			}
+		};
+
+		const promises = [];
+		for (let i = 0; i < cdnItems.length; i++) {
+			let item = cdnItems[i];
+
+			let filepath = item[0];
+			let contentType = item[1];
+			let encoding = item[2];
+
+			promises.push(uploadAssetIfNeeded(filepath, contentType, encoding));
+		}
+
+		await utils.awaitPromises(promises);
+
+		debugLog(`Done uploading assets to S3:\n\tAlready present: ${existingItems.length}\n\tNewly uploaded: ${uploadedItems.length}\n\tError items: ${errorItems.length}`);
 	}
 }
 
@@ -924,6 +1128,32 @@ expressApp.locals.Decimal = Decimal;
 expressApp.locals.utils = utils;
 expressApp.locals.markdown = src => markdown.render(src);
 
+expressApp.locals.assetUrl = (path) => {
+	// trim off leading "./"
+	let normalizedPath = path.substring(2);
+
+	//console.log("assetUrl: " + path + " -> " + normalizedPath);
+
+	if (config.cdn.active && cdnFilepathMap[normalizedPath]) {
+		return `${config.cdn.baseUrl}/${global.cacheId}/${normalizedPath}`;
+
+	} else {
+		return `${path}?v=${global.cacheId}`;
+	}
+};
+
+// debug setting to skip js/css integrity checks
+const skipIntegrityChecks = false;
+const resourceIntegrityHashes = JSON.parse(fs.readFileSync(path.join(process.cwd(), "public/txt/resource-integrity.json")));
+
+expressApp.locals.assetIntegrity = (filename) => {
+	if (!skipIntegrityChecks && resourceIntegrityHashes[filename]) {
+		return resourceIntegrityHashes[filename];
+
+	} else {
+		return "";
+	}
+};
 
 
 module.exports = expressApp;

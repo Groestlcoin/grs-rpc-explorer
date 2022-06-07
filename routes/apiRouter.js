@@ -22,6 +22,7 @@ const coins = require("./../app/coins.js");
 const config = require("./../app/config.js");
 const coreApi = require("./../app/api/coreApi.js");
 const addressApi = require("./../app/api/addressApi.js");
+const xyzpubApi = require("./../app/api/xyzpubApi.js");
 const rpcApi = require("./../app/api/rpcApi.js");
 const apiDocs = require("./../docs/api.js");
 const btcQuotes = require("./../app/coins/btcQuotes.js");
@@ -122,25 +123,83 @@ router.get("/block/:hashOrHeight", asyncHandler(async (req, res, next) => {
 /// TRANSACTIONS
 
 router.get("/tx/:txid", function(req, res, next) {
-	var txid = utils.asHash(req.params.txid);
+	let txid = utils.asHash(req.params.txid);
 
-	var promises = [];
+	let promises = [];
 
-	promises.push(coreApi.getRawTransactionsWithInputs([txid]));
+	let txInputLimit = (res.locals.crawlerBot) ? 3 : -1;
+
+	promises.push(coreApi.getRawTransactionsWithInputs([txid], txInputLimit));
 
 	Promise.all(promises).then(function(results) {
-		res.json(results[0].transactions[0]);
+		let outJson = results[0].transactions[0];
+		let txInputs = results[0].txInputsByTransaction[txid] || {};
+
+		let inputBtc = 0;
+		if (txInputs[0]) {
+			for (let key in txInputs) {
+				let item = txInputs[key];
+
+				inputBtc += item["value"] * global.coinConfig.baseCurrencyUnit.multiplier;
+
+				outJson.vin[key].scriptSig.address = item.scriptPubKey.address;
+				outJson.vin[key].scriptSig.type = item.scriptPubKey.type;
+				outJson.vin[key].value = item.value;
+			}
+		}
+
+		let outputBtc = 0;
+		for (let key in outJson.vout) {
+			let item = outJson.vout[key];
+
+			outputBtc += item.value * global.coinConfig.baseCurrencyUnit.multiplier;
+		}
+
+		outJson.fee = {
+			"amount": (inputBtc - outputBtc) / global.coinConfig.baseCurrencyUnit.multiplier,
+			"unit": "GRS"
+		};
+
+		if (global.specialTransactions && global.specialTransactions[txid]) {
+			let funInfo = global.specialTransactions[txid];
+
+			outJson.fun = funInfo;
+		}
+
+		res.json(outJson);
 
 		next();
 
 	}).catch(function(err) {
+		utils.logError("10328fwgdaqw", err);
+
 		res.json({success:false, error:err});
 
 		next();
 	});
 });
 
+router.get("/tx/volume/24h", function(req, res, next) {
+	try {
+		if (networkVolume && networkVolume.d1 && networkVolume.d1.amt) {
+			let currencyValue = parseInt(networkVolume.d1.amt);
 
+			res.json({"24h": currencyValue});
+
+		} else {
+			res.json({success:false, error: "Volume data not yet loaded."});
+		}
+
+		next();
+
+	} catch (err) {
+		utils.logError("39024y484", err);
+
+		res.json({success:false, error:err});
+
+		next();
+	}
+});
 
 
 /// BLOCKCHAIN
@@ -327,6 +386,145 @@ router.get("/address/:address", asyncHandler(async (req, res, next) => {
 	}
 }));
 
+
+
+
+
+/// XYZ PUBS
+
+// redirect for an old path
+router.get("/util/xyzpub/:extendedPubkey", asyncHandler(async (req, res, next) => {
+	const extendedPubkey = req.params.extendedPubkey;
+
+	res.redirect(`${req.baseUrl}/xyzpub/${extendedPubkey}`);
+}));
+
+router.get("/xyzpub/:extendedPubkey", asyncHandler(async (req, res, next) => {
+	try {
+		const extendedPubkey = req.params.extendedPubkey;
+		res.locals.extendedPubkey = extendedPubkey;
+
+
+		let limit = 20;
+		if (req.query.limit) {
+			limit = parseInt(req.query.limit);
+		}
+
+		let offset = 0;
+		if (req.query.offset) {
+			offset = parseInt(req.query.offset);
+		}
+
+
+		let relatedKeys = [];
+
+		let outputType = "Unknown";
+		let outputTypeDesc = null;
+		let bip32Path = "Unknown";
+
+
+		const keyDetails = xyzpubApi.getKeyDetails(extendedPubkey);
+		keyDetails.receiveAddresses = xyzpubApi.getXpubAddresses(extendedPubkey, 0, limit, offset);
+		keyDetails.changeAddresses = xyzpubApi.getXpubAddresses(extendedPubkey, 1, limit, offset);
+
+
+		res.json(keyDetails);
+
+		next();
+
+	} catch (err) {
+		res.locals.pageErrors.push(utils.logError("0923tygdusde", err));
+
+		next();
+	}
+}));
+
+router.get("/xyzpub/txids/:extendedPubkey", asyncHandler(async (req, res, next) => {
+	try {
+		const extendedPubkey = req.params.extendedPubkey;
+
+		let gapLimit = 20;
+		if (req.query.gapLimit) {
+			gapLimit = parseInt(req.query.gapLimit);
+		}
+
+		let limit = -1;
+		if (req.query.limit) {
+			limit = parseInt(req.query.limit);
+		}
+
+		const searchResult = await xyzpubApi.searchXpubTxids(extendedPubkey, gapLimit, limit);
+
+		let result = {
+			txids: [],
+			txCount: 0
+		};
+
+		searchResult.usedAddresses.forEach(addrResult => {
+			addrResult.txids.forEach(txid => {
+				if (!result.txids.includes(txid)) {
+					result.txids.push(txid);
+					result.txCount++;
+				}
+			});
+		})
+
+		if (searchResult) {
+			res.json(result);
+
+		} else {
+			res.json({success:false});
+		}
+
+		next();
+
+	} catch (e) {
+		utils.logError("382rdere", e);
+
+		res.json({success:false, error: e.toString()});
+
+		next();
+	}
+}));
+
+router.get("/xyzpub/addresses/:extendedPubkey", asyncHandler(async (req, res, next) => {
+	try {
+		const extendedPubkey = req.params.extendedPubkey;
+
+		let receiveOrChange = 0;
+		if (req.query.receiveOrChange) {
+			receiveOrChange = parseInt(req.query.receiveOrChange);
+		}
+
+		let limit = 10;
+		if (req.query.limit) {
+			limit = parseInt(req.query.limit);
+		}
+
+		let offset = 0;
+		if (req.query.offset) {
+			offset = parseInt(req.query.offset);
+		}
+
+		const xyzpubResult = await xyzpubApi.getXpubAddresses(extendedPubkey, receiveOrChange, limit, offset);
+
+		if (xyzpubResult){
+			res.json(xyzpubResult);
+
+		} else {
+			res.json({success:false});
+		}
+
+		next();
+
+	} catch (e) {
+		utils.logError("3297rwegee", e);
+
+		res.json({success:false, error: e.toString()});
+
+		next();
+	}
+}));
 
 
 
@@ -614,159 +812,6 @@ router.get("/mempool/fees", function(req, res, next) {
 
 
 
-/// UTIL
-
-router.get("/util/xyzpub/:extendedPubkey", asyncHandler(async (req, res, next) => {
-	try {
-		const extendedPubkey = req.params.extendedPubkey;
-		res.locals.extendedPubkey = extendedPubkey;
-
-
-		let limit = 20;
-		if (req.query.limit) {
-			limit = parseInt(req.query.limit);
-		}
-
-		let offset = 0;
-		if (req.query.offset) {
-			offset = parseInt(req.query.offset);
-		}
-
-
-		let receiveAddresses = [];
-		let changeAddresses = [];
-		let relatedKeys = [];
-
-		let outputType = "Unknown";
-		let outputTypeDesc = null;
-		let bip32Path = "Unknown";
-
-		// if xpub/ypub/zpub convert to address under path m/0/0
-		if (extendedPubkey.match(/^(xpub|tpub).*$/)) {
-			outputType = "P2PKH";
-			outputTypeDesc = "Pay to Public Key Hash";
-			bip32Path = "m/44'/17'";
-
-			const xpub_tpub = global.activeBlockchain == "main" ? "xpub" : "tpub";
-			const ypub_upub = global.activeBlockchain == "main" ? "ypub" : "upub";
-			const zpub_vpub = global.activeBlockchain == "main" ? "zpub" : "vpub";
-
-			let xpub = extendedPubkey;
-			if (!extendedPubkey.startsWith(xpub_tpub)) {
-				xpub = utils.xpubChangeVersionBytes(extendedPubkey, xpub_tpub);
-			}
-
-			receiveAddresses = utils.bip32Addresses(extendedPubkey, "p2pkh", 0, limit, offset);
-			changeAddresses = utils.bip32Addresses(extendedPubkey, "p2pkh", 1, limit, offset);
-
-			if (!extendedPubkey.startsWith(xpub_tpub)) {
-				relatedKeys.push({
-					keyType: xpub_tpub,
-					key: utils.xpubChangeVersionBytes(xpub, xpub_tpub),
-					outputType: "P2PKH",
-					firstAddress: utils.bip32Addresses(xpub, "p2pkh", 0, 1, 0)[0]
-				});
-			}
-
-			relatedKeys.push({
-				keyType: ypub_upub,
-				key: utils.xpubChangeVersionBytes(xpub, ypub_upub),
-				outputType: "P2WPKH in P2SH",
-				firstAddress: utils.bip32Addresses(xpub, "p2sh(p2wpkh)", 0, 1, 0)[0]
-			});
-
-			relatedKeys.push({
-				keyType: zpub_vpub,
-				key: utils.xpubChangeVersionBytes(xpub, zpub_vpub),
-				outputType: "P2WPKH",
-				firstAddress: utils.bip32Addresses(xpub, "p2wpkh", 0, 1, 0)[0]
-			});
-
-		} else if (extendedPubkey.match(/^(ypub|upub).*$/)) {
-			outputType = "P2WPKH in P2SH";
-			outputTypeDesc = "Pay to Witness Public Key Hash (P2WPKH) wrapped inside Pay to Script Hash (P2SH), aka Wrapped Segwit";
-			bip32Path = "m/49'/17'";
-
-			const xpub_tpub = global.activeBlockchain == "main" ? "xpub" : "tpub";
-			const zpub_vpub = global.activeBlockchain == "main" ? "zpub" : "vpub";
-
-			const xpub = utils.xpubChangeVersionBytes(extendedPubkey, xpub_tpub);
-
-			receiveAddresses = utils.bip32Addresses(xpub, "p2sh(p2wpkh)", 0, limit, offset);
-			changeAddresses = utils.bip32Addresses(xpub, "p2sh(p2wpkh)", 1, limit, offset);
-
-			relatedKeys.push({
-				keyType: xpub_tpub,
-				key: xpub,
-				outputType: "P2PKH",
-				firstAddress: utils.bip32Addresses(xpub, "p2pkh", 0, 1, 0)[0]
-			});
-
-			relatedKeys.push({
-				keyType: zpub_vpub,
-				key: utils.xpubChangeVersionBytes(xpub, zpub_vpub),
-				outputType: "P2WPKH",
-				firstAddress: utils.bip32Addresses(xpub, "p2wpkh", 0, 1, 0)[0]
-			});
-
-		} else if (extendedPubkey.match(/^(zpub|vpub).*$/)) {
-			outputType = "P2WPKH";
-			outputTypeDesc = "Pay to Witness Public Key Hash, aka Native Segwit";
-			bip32Path = "m/84'/17'";
-
-			const xpub_tpub = global.activeBlockchain == "main" ? "xpub" : "tpub";
-			const ypub_upub = global.activeBlockchain == "main" ? "ypub" : "upub";
-
-			const xpub = utils.xpubChangeVersionBytes(extendedPubkey, xpub_tpub);
-
-			receiveAddresses = utils.bip32Addresses(xpub, "p2wpkh", 0, limit, offset);
-			changeAddresses = utils.bip32Addresses(xpub, "p2wpkh", 1, limit, offset);
-
-			relatedKeys.push({
-				keyType: xpub_tpub,
-				key: xpub,
-				outputType: "P2PKH",
-				firstAddress: utils.bip32Addresses(xpub, "p2pkh", 0, 1, 0)[0]
-			});
-
-			relatedKeys.push({
-				keyType: ypub_upub,
-				key: utils.xpubChangeVersionBytes(xpub, ypub_upub),
-				outputType: "P2WPKH in P2SH",
-				firstAddress: utils.bip32Addresses(xpub, "p2sh(p2wpkh)", 0, 1, 0)[0]
-			});
-
-		} else if (extendedPubkey.startsWith("Ypub")) {
-			outputType = "Multi-Sig P2WSH in P2SH";
-			bip32Path = "-";
-
-		} else if (extendedPubkey.startsWith("Zpub")) {
-			outputType = "Multi-Sig P2WSH";
-			bip32Path = "-";
-		}
-
-
-		res.json({
-			keyType: extendedPubkey.substring(0, 4),
-			outputType: outputType,
-			outputTypeDesc: outputTypeDesc,
-			bip32Path: bip32Path,
-			relatedKeys: relatedKeys,
-			receiveAddresses: receiveAddresses,
-			changeAddresses: changeAddresses
-		});
-
-		next();
-
-	} catch (err) {
-		res.locals.pageErrors.push(utils.logError("0923tygdusde", err));
-
-		next();
-	}
-}));
-
-
-
 
 
 /// PRICE
@@ -884,9 +929,61 @@ router.get("/quotes/all", function(req, res, next) {
 });
 
 router.get("/quotes/:quoteIndex", function(req, res, next) {
-	var index = parseInt(req.params.quoteIndex);
+	if (!req.params.quoteIndex.match(/\d+/)) {
+		return;
+	}
+
+	let index = parseInt(req.params.quoteIndex);
 
 	res.json(btcQuotes.items[index]);
+
+	next();
+});
+
+router.get("/holidays/all", function(req, res, next) {
+	res.json(global.btcHolidays.sortedItems);
+
+	next();
+});
+
+router.get("/holidays/today", function(req, res, next) {
+	let momentObj = moment.utc(new Date());
+	if (req.query.tzOffset) {
+		momentObj = momentObj.add(parseInt(req.query.tzOffset), "hours")
+	}
+
+	let day = momentObj.format("MM-DD");
+	if (global.btcHolidays.byDay[day]) {
+		res.json({day: day, holidays: global.btcHolidays.byDay[day]});
+
+	} else {
+		res.json({day: day, holidays: []});
+	}
+
+	next();
+});
+
+router.get("/holidays/:day", function(req, res, next) {
+	if (!req.params.day.match(/^(\d{4}-)?\d{2}-\d{2}$/)) {
+		return;
+	}
+
+	let day = req.params.day;
+
+	if (req.params.day.match(/^\d{4}-\d{2}-\d{2}$/)) {
+		// strip off year
+		day = day.substring(5);
+
+	} else if (req.params.day.match(/^\d{2}-\d{2}$/)) {
+		// already correct format
+	}
+
+	if (global.btcHolidays.byDay[day]) {
+		res.json({day: day, holidays: global.btcHolidays.byDay[day]});
+
+	} else {
+		res.json({day: day, holidays: []});
+	}
 
 	next();
 });

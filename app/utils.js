@@ -363,11 +363,11 @@ function getExchangedCurrencyFormatData(amount, exchangeType, includeUnit=true) 
 	return "";
 }
 
-function formatExchangedCurrency(amount, exchangeType) {
+function formatExchangedCurrency(amount, exchangeType, decimals=2) {
 	if (global.exchangeRates != null && global.exchangeRates[exchangeType.toLowerCase()] != null) {
 		var dec = new Decimal(amount);
 		dec = dec.times(global.exchangeRates[exchangeType.toLowerCase()]);
-		var exchangedAmt = parseFloat(Math.round(dec * 100) / 100).toFixed(2);
+		var exchangedAmt = parseFloat(Math.round(dec * 100) / 100).toFixed(decimals);
 
 		return {
 			val: addThousandsSeparators(exchangedAmt),
@@ -379,7 +379,7 @@ function formatExchangedCurrency(amount, exchangeType) {
 		if (global.exchangeRates != null && global.goldExchangeRates != null) {
 			var dec = new Decimal(amount);
 			dec = dec.times(global.exchangeRates.usd).dividedBy(global.goldExchangeRates.usd);
-			var exchangedAmt = parseFloat(Math.round(dec * 100) / 100).toFixed(2);
+			var exchangedAmt = parseFloat(Math.round(dec * 100) / 100).toFixed(decimals);
 
 			return {
 				val: addThousandsSeparators(exchangedAmt),
@@ -759,7 +759,7 @@ function geoLocateIpAddresses(ipAddresses, provider) {
 						} catch (err) {
 							debugLog("Failed IP-geo-lookup: " + result.key);
 
-							logError("39724gdge33a", error, {ip: result.key});
+							logError("39724gdge33a", err, {ip: result.key});
 
 							// we failed to get what we wanted, but there's no meaningful recourse,
 							// so we log the failure and continue without objection
@@ -1102,8 +1102,18 @@ const timeFunction = (uid, f, perfResults=null) => {
 	}
 };
 
-const fileCache = (cacheDir, filename) => {
-	const filepath = `${cacheDir}/${filename}`;
+const fileCache = (cacheDir, cacheName, cacheVersion=1) => {
+	const filename = (version) => { return ((version > 1) ? [cacheName, `v${version}`].join("-") : cacheName) + ".json"; };
+	const filepath = `${cacheDir}/${filename(cacheVersion)}`;
+
+	if (cacheVersion > 1) {
+		// remove old versions
+		for (let i = 1; i < cacheVersion; i++) {
+			if (fs.existsSync(`${cacheDir}/${filename(i)}`)) {
+				fs.unlinkSync(`${cacheDir}/${filename(i)}`);
+			}
+		}
+	}
 
 	return {
 		tryLoadJson: () => {
@@ -1129,7 +1139,7 @@ const fileCache = (cacheDir, filename) => {
 				fs.mkdirSync(cacheDir);
 			}
 
-			fs.writeFileSync(filepath, JSON.stringify(obj));
+			fs.writeFileSync(filepath, JSON.stringify(obj, null, 4));
 		}
 	};
 };

@@ -67,8 +67,8 @@ block content
 							.input-group.input-group
 								input.form-control.form-control(id="mempoolquery", type="text", name="mempoolquery", placeholder="txid", value=(mempoolquery), title="<span class='text-warning'>Transaction not found</span>", data-bs-trigger="manual", data-bs-html="true", data-bs-placement="bottom")
 
-								button.btn.btn-primary(type="submit")
-									i.fas.fa-search
+								button.btn.btn-primary(type="submit", aria-label="Search")
+									i.bi-search
 
 					.me-4.d-inline-block.mb-3
 						h6.text-card-highlight.fw-light
@@ -79,8 +79,8 @@ block content
 							.input-group.input-group
 								input.form-control.form-control(id="customFeeRate", type="text", name="customFeeRate", placeholder="gro/vB", value=(customFeeRate))
 
-								button.btn.btn-primary(type="submit")
-									i.fas.fa-search
+								button.btn.btn-primary(type="submit", aria-label="Search")
+									i.bi-search
 
 			hr.mt-1.mb-3
 
@@ -203,7 +203,6 @@ block endOfBody
 
 	+graphPageScriptSetup
 
-	script(src='./js/decimal.js')
 
 	script.
 		var satoshiPerByteBucketMaxima = !{JSON.stringify(satoshiPerByteBucketMaxima)};
@@ -238,7 +237,7 @@ block endOfBody
 							url: `./internal-api/get-mempool-summary?statusId=${statusId}`
 
 						}).done((summaryResult) => {
-							if (summaryResult.count) {
+							if (summaryResult && summaryResult.count) {
 								summary = summaryResult;
 
 								$("#json-content").text(JSON.stringify(summaryResult, null, 4));

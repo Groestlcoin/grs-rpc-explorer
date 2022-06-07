@@ -90,11 +90,11 @@ code {
 	background-color: $body-bg !important;
 }
 
-.fontawesome-shadow {
+.icon-shadow {
 	filter: drop-shadow(1px 1px 1px #666);
 }
 
-.fontawesome-shadow-dark {
+.icon-shadow-dark {
 	filter: drop-shadow(1px 1px 1px #262626);
 }
 
@@ -202,6 +202,10 @@ code, .font-json, .font-data, .font-plaintext {
 }
 
 .user-message-markdown p {
+	margin-bottom: 0 !important;
+}
+
+.summary-row:last-child {
 	margin-bottom: 0 !important;
 }
 

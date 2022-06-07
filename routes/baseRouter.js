@@ -306,6 +306,10 @@ router.get("/node-details", asyncHandler(async (req, res, next) => {
 			res.locals.getblockchaininfo = await coreApi.getBlockchainInfo();
 		}, perfResults));
 
+		promises.push(utils.timePromise("node-details.getDeploymentInfo", async () => {
+			res.locals.getdeploymentinfo = await coreApi.getDeploymentInfo();
+		}, perfResults));
+
 		promises.push(utils.timePromise("node-details.getNetworkInfo", async () => {
 			res.locals.getnetworkinfo = await coreApi.getNetworkInfo();
 		}, perfResults));
@@ -881,6 +885,11 @@ router.get("/block-stats", asyncHandler(async (req, res, next) => {
 }));
 
 router.get("/mining-template", asyncHandler(async (req, res, next) => {
+	// url changed
+	res.redirect("./next-block");
+}));
+
+router.get("/next-block", asyncHandler(async (req, res, next) => {
 	const blockTemplate = await coreApi.getBlockTemplate();
 
 	res.locals.minFeeRate = 1000000;
@@ -931,8 +940,8 @@ router.get("/mining-template", asyncHandler(async (req, res, next) => {
 	res.locals.blockTemplate = blockTemplate;
 
 
-	await utils.timePromise("mining-template.render", async () => {
-		res.render("mining-template");
+	await utils.timePromise("next-block.render", async () => {
+		res.render("next-block");
 	});
 
 	next();
@@ -1546,7 +1555,8 @@ router.get("/address/:address", asyncHandler(async (req, res, next) => {
 		var bech32Error = null;
 		var bech32mError = null;
 
-		if (address.match(/^[F32m].*$/)) {
+		let b58prefix = (global.activeBlockchain == "main" ? /^[F3].*$/ : /^[2mn].*$/);
+		if (address.match(b58prefix)) {
 			try {
 				res.locals.addressObj = bitcoinjs.address.fromBase58Check(address);
 				res.locals.addressObj.hash = res.locals.addressObj.hash.toString("hex");
@@ -2266,6 +2276,14 @@ router.get("/quotes", function(req, res, next) {
 	res.locals.btcQuotes = btcQuotes.items;
 
 	res.render("quotes");
+
+	next();
+});
+
+router.get("/holidays", function(req, res, next) {
+	res.locals.btcHolidays = global.btcHolidays;
+
+	res.render("holidays");
 
 	next();
 });

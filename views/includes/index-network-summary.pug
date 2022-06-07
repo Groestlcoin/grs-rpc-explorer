@@ -19,7 +19,7 @@ if (exchangeRates)
 			- var timeText = tzMoment.format("h:mma");
 
 			+summaryItem("Exchange Rate", `Source: ${new URL(coinConfig.exchangeRateData.jsonUrl).hostname}<br/>Last Updated: ${timeText} (${new Decimal(new Date().getTime() - global.exchangeRatesUpdateTime.getTime()).dividedBy(1000).dividedBy(60).toDP(0)} min ago)`)
-				- var formatData = utils.formatExchangedCurrency(1.0, userSettings.localCurrency);
+				- var formatData = utils.formatExchangedCurrency(1.0, userSettings.localCurrency, 0);
 
 				span.text-success
 					span.me-1 #{formatData.symbol}
@@ -72,25 +72,26 @@ if (exchangeRates)
 	.float-end
 		if (userSettings.homepageShowTechDetails == "true")
 			a.me-2(href="./changeSetting?name=homepageShowTechDetails&value=false", title="Hide technical network details", data-bs-toggle="tooltip", data-bs-placement="bottom")
-				i.fas.fa-server.text-muted
+				i.bi-hdd-stack.text-muted
 
 		else
 			a.me-2(href="./changeSetting?name=homepageShowTechDetails&value=true", title="Show technical network details", data-bs-toggle="tooltip", data-bs-placement="bottom")
-				i.fas.fa-server.text-muted
+				i.bi-hdd-stack.text-muted
+
 
 +contentSection
-	+summaryRow(1 + (hashrate7d ? 1 : 0) + (chainTxStats && chainTxStats[7 * targetBlocksPerDay] ? 1 : 0) + (difficultyAdjustmentData ? 1 : 0))
+	+summaryRow(2 + (hashrate7d ? 1 : 0) + (chainTxStats && chainTxStats[7 * targetBlocksPerDay] ? 1 : 0) + (difficultyAdjustmentData ? 1 : 0))
 		if (hashrate7d)
 			+summaryItem("7d Hashrate", "The average hashrate of the global mining network over the last 7 days. A comparison to the 30-day average is included to help gauge the rate of change.")
 				- var hashrate7dayData = utils.formatLargeNumber(hashrate7d, 1);
 
 				span.me-1 #{hashrate7dayData[0]}
-				span.small.text-muted.border-dotted.me-2(title=`${hashrate7dayData[1].abbreviation}H = ${hashrate7dayData[1].name}-hash (x10^${hashrate7dayData[1].exponent})` data-bs-toggle='tooltip') #{hashrate7dayData[1].abbreviation}H/s
+				span.small.text-muted.border-dotted(title=`${hashrate7dayData[1].abbreviation}H = ${hashrate7dayData[1].name}-hash (x10^${hashrate7dayData[1].exponent})` data-bs-toggle='tooltip') #{hashrate7dayData[1].abbreviation}H/s
 
 				if (hashrate30d)
 					- var ratio = hashrate7d / hashrate30d;
 
-					small
+					span.text-tiny.text-muted.ms-2
 						| (
 						span.border-dotted(title='7d hashrate vs 30d hashrate.' data-bs-toggle='tooltip')
 							if (ratio > 1)
@@ -102,6 +103,36 @@ if (exchangeRates)
 								span.text-danger -#{ratioPercent.toDP(2)}%
 
 						| )
+
+		+summaryItem("Difficulty", null, null, null, "icon:bi-clock-history", "./difficulty-history", "View difficulty history")
+			- var difficultyData = utils.formatLargeNumber(getblockchaininfo.difficulty, 3);
+
+			if (getblockchaininfo.difficulty > 1000)
+				span.border-dotted(title=parseFloat(getblockchaininfo.difficulty).toLocaleString(), data-bs-toggle="tooltip")
+					span #{difficultyData[0]}
+					span  x 10
+					sup #{difficultyData[1].exponent}
+
+			else
+				span #{new Decimal(getblockchaininfo.difficulty).toDP(3)}
+
+			if (global.athDifficulty)
+				span.text-tiny.text-muted.ms-2
+					| (
+
+					- var diffX = getblockchaininfo.difficulty;
+					if (global.athDifficulty == diffX)
+						span.border-dotted(title='The current difficulty is an All-Time High!' data-bs-toggle='tooltip')
+							span.text-success ATH
+					else
+						- var diffDrop = new Decimal(global.athDifficulty).minus(diffX).dividedBy(global.athDifficulty).times(100).toDP(2);
+
+						span.border-dotted(title=`The current difficulty is ${diffDrop}% lower than the All-Time High.` data-bs-toggle='tooltip')
+							span.text-danger -#{diffDrop}%
+
+					| )
+
+
 
 		if (chainTxStats && chainTxStats[7 * targetBlocksPerDay])
 			+summaryItem("7d Transactions", "The total number of transactions that have been confirmed in the blockchain over the last 7 days.")
@@ -116,27 +147,28 @@ if (exchangeRates)
 
 			+summaryItem("Difficulty Δ", difficultyAdjustmentData.estimateAvailable ? desc : null)
 				if (difficultyAdjustmentData.estimateAvailable)
-					span.me-2(class=(difficultyAdjustmentData.delta >= 0 ? "text-success" : "text-danger"))
+					span(class=(difficultyAdjustmentData.delta >= 0 ? "text-success" : "text-danger"))
 						if (difficultyAdjustmentData.sign == "+")
 							| +
 
 						| #{difficultyAdjustmentData.delta.toDP(2)}
 						small.ms-1 %
-					small.text-muted
+
+					span.text-tiny.text-muted.ms-2
 						| (
 						span.border-dotted(title=`${difficultyAdjustmentData.blocksLeft.toLocaleString()} block(s)`, data-bs-toggle="tooltip") 1 min
 						| )
 
 				else
 					small.border-dotted.text-muted(title="Estimate pending...<br/>A new difficulty epoch just started. Difficulty adjustment estimates made with too little data can be very unreliable, so are not calculated.", data-bs-toggle="tooltip", data-bs-html="true")
-						i.fas.fa-hourglass-half
+						i.bi-hourglass-split
 
-		+summaryItem("Coins", utxoSetSummary ? null : `This value is estimated.`)
+		+summaryItem("Coins", utxoSetSummary ? null : (config.slowDeviceMode ? `Because this app is configured to conserve resources (SLOW_DEVICE_MODE=true), this value is estimated, using a checkpoint.` : `This value is estimated, using a checkpoint.`))
 			- var maxSupply = coinConfig.maxSupplyByNetwork[activeBlockchain];
 
 			if (utxoSetSummary)
 				span #{parseFloat(utxoSetSummary.total_amount).toLocaleString()}
-				span.small.ms-2.text-muted
+				span.text-tiny.ms-2.text-muted
 					| (
 					span.border-dotted(title=`${new Decimal(utxoSetSummary.total_amount).dividedBy(maxSupply).times(100).toDP(5)}% have been mined into circulation`, data-bs-toggle="tooltip") #{new Decimal(utxoSetSummary.total_amount).dividedBy(maxSupply).times(100).toDP(2, Decimal.ROUND_DOWN)}%
 					| )
@@ -145,7 +177,7 @@ if (exchangeRates)
 				- var estimatedSupply = utils.estimatedSupply(getblockchaininfo.blocks);
 
 				span #{parseInt(estimatedSupply).toLocaleString()}
-				small.ms-2.text-muted
+				span.text-tiny.ms-2.text-muted
 					| (
 					span.border-dotted(title=`${estimatedSupply.dividedBy(maxSupply).times(100).toDP(4)}% have been mined into circulation`, data-bs-toggle="tooltip") #{estimatedSupply.dividedBy(maxSupply).times(100).toDP(1)}%
 					| )
@@ -156,47 +188,69 @@ if (exchangeRates)
 
 	- var smartFeeEstimateBlocks = [];
 	- var smartFeeEstimateStrings = [];
+	- var smartFeeEstimateTimes = [];
 	if (smartFeeEstimates)
 		if (smartFeeEstimates[1])
 			- smartFeeEstimateBlocks.push(1);
 			- smartFeeEstimateStrings.push(smartFeeEstimates[1]);
+			- smartFeeEstimateTimes.push('asap');
 		if (smartFeeEstimates[2])
 			- smartFeeEstimateBlocks.push(2);
 			- smartFeeEstimateStrings.push(smartFeeEstimates[2]);
+			- smartFeeEstimateTimes.push('2min');
 		if (smartFeeEstimates[3])
 			- smartFeeEstimateBlocks.push(3);
 			- smartFeeEstimateStrings.push(smartFeeEstimates[3]);
+			- smartFeeEstimateTimes.push('3min');
 
-	+summaryRow((mempoolInfo == undefined ? 0 : 1) + (smartFeeEstimateStrings.length > 0 ? 1 : 0))
+	+summaryRow((mempoolInfo == undefined ? 0 : 1) + (smartFeeEstimateStrings.length > 0 ? 1 : 0) + ((mempoolInfo && global.activeBlockchain != "signet") ? 1 : 0))
 		if (mempoolInfo)
 			- var thresholds = [11000, 7000];
 			- var colorClass_txCount = (mempoolInfo.size > 11000) ? "text-danger" : (mempoolInfo.size > 7000 ? "text-warning" : "text-success");
 			- var blockCount = new Decimal(mempoolInfo.bytes).dividedBy(coinConfig.maxBlockSize);
 			- var colorClass_blockCount = (blockCount > 20) ? "text-danger" : (blockCount > 10 ? "text-warning" : "text-success");
 
-			+summaryItem("Mempool", "The number of unconfirmed transactions in your node's mempool, and the number of blocks needed to confirm those transactions")
+			+summaryItem("Mempool", "The number of unconfirmed transactions in your node's mempool, and the number of blocks needed to confirm those transactions", null, null, "icon:bi-hourglass-split", "./mempool-summary", "View mempool summary details")
+
 				span(class=colorClass_txCount) #{mempoolInfo.size.toLocaleString()}
 				span.text-tiny.text-muted.ms-1 tx
 
-				span.fw-light.text-muted.mx-2 &ndash;
+				span.small.text-muted.ms-2
+					| (
+					span.border-dotted(title="Number of blocks needed to clear your node's mempool.", data-bs-toggle="tooltip")
+						span(class=colorClass_blockCount) #{blockCount.toDP(2)}
+						span.text-tiny.text-muted.ms-1
+							i.bi-box
+					| )
 
-				span(class=colorClass_blockCount) #{blockCount.toDP(2)}
-				span.text-tiny.text-muted.ms-1 blocks
+		if (mempoolInfo && global.activeBlockchain != "signet")
+			+summaryRow
+				+summaryItem("Next Block", "A prediction for what transactions will be included in the next block, yet to be mined. Based on the output of the RPC getblocktemplate.", null, null, "icon:bi-minecart-loaded", "./next-block", "View next block details")
+
+					#index-next-block
+						.text-center.text-reset.pb-4
+							.mt-2
+							.spinner-border.spinner-border-sm
 
 
 		if (false)
 			+summaryItem("Next Block (est.)")
 				| #{new Decimal(nextBlockMinFeeRate).toDP(0)}
 				a(href=`./tx/${nextBlockMinFeeTxid}`)
-					i.fas.fa-circle
+					i.bi-circle
 				| - #{new Decimal(nextBlockMaxFeeRate).toDP(0)}
 				a(href=`./tx/${nextBlockMaxFeeTxid}`)
-					i.fas.fa-circle
+					i.bi-circle
 				small.ms-2.text-muted gro/vB
 
 		if (smartFeeEstimateStrings.length > 0)
-			+summaryItem(`Smart Fees (${smartFeeEstimateBlocks.join(", ")})`, `The recommended fee rate to target confirmation in ${smartFeeEstimateBlocks.join(", ")} blocks`, "gro/vB")
-				| #{smartFeeEstimateStrings.join(", ")}
+			+summaryItem(`Smart Fees`, `The recommended fee rate to target confirmation in ${smartFeeEstimateBlocks.join(", ")} blocks`, "gro/vB")
+				each x, xIndex in smartFeeEstimateStrings
+					if (xIndex > 0)
+						span.mx-2.text-muted /
+
+					| #{x}
+					span.text-tiny.text-muted.ms-1 (#{smartFeeEstimateTimes[xIndex]})
 
 
 

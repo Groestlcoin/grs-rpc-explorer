@@ -43,7 +43,7 @@ See [CHANGELOG.md](/CHANGELOG.md).
 
 1. Install `Groestlcoin Core`. Ensure that `Groestlcoin Core`'s' RPC server is enabled (`server=1`).
 2. Allow `Groestlcoin Core` to synchronize with the Groestlcoin network (you *can* use this tool while sychronizing, but some pages may fail).
-3. Install Node.js (14+ recommended).
+3. Install Node.js (12.9+ required, 14+ recommended).
 
 ### Note about pruning and indexing configurations
 

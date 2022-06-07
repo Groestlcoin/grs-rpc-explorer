@@ -7,10 +7,10 @@ block content
 	+pageTitle(`${coinConfig.name} Holidays`)
 
 
-	+dismissableInfoAlert("holidaysNoteDismissed", "About Bitcoin Holidays...")
-		h6.mb-2 About Bitcoin Holidays
+	+dismissableInfoAlert("holidaysNoteDismissed", "About Groestlcoin Holidays...")
+		h6.mb-2 About Groestlcoin Holidays
 
-		| This is a curated list of Bitcoin 'Holidays' that commemorate key moments in Bitcoin's history. Suggestions are welcome via an issue or PR on <a href='https://github.com/janoside/btc-rpc-explorer' target='_blank'>GitHub</a>.
+		| This is a curated list of Groestlcoin 'Holidays' that commemorate key moments in Groestlcoin's history. Suggestions are welcome via an issue or PR on <a href='https://github.com/Groestlcoin/grs-rpc-explorer' target='_blank'>GitHub</a>.
 
 
 	- var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -31,7 +31,7 @@ block content
 				+contentSection
 					h6 #{months[currentMonth]} #{dom}, #{item.date.substring(0, 4)}
 					h6.fs-6.text-uppercase.fw-light.text-card-highlight #{item.name}
-				
+
 					.mb-0 !{item.desc}
 
 				if (false)

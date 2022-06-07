@@ -1,6 +1,6 @@
 {
-    "name": "@BitcoinExplorer",
-    "short_name": "@BitcoinExplorer",
+    "name": "@GroestlcoinExplorer",
+    "short_name": "@GroestlcoinExplorer",
     "icons": [
         {
             "src": "/img/network-mainnet/android-chrome-192x192.png",

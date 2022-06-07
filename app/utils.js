@@ -323,7 +323,7 @@ function satoshisPerUnitOfLocalCurrency(localCurrency) {
 		var satCurrencyType = global.currencyTypes["gro"];
 		var localCurrencyType = global.currencyTypes[localCurrency];
 
-		// GRS/USD -> sat/USD
+		// GRS/USD -> gro/USD
 		dec = dec.times(satCurrencyType.multiplier);
 
 		var exchangedAmt = parseInt(dec);

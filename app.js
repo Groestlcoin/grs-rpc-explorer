@@ -516,8 +516,8 @@ async function onRpcConnectionVerified(getnetworkinfo, getblockchaininfo) {
 		var zmq = require("zeromq");
 		var sock = zmq.socket("sub");
 
-		sock.connect("tcp://192.168.1.1:28333");
-		console.log("Worker connected to port 28333");
+		sock.connect("tcp://192.168.1.1:21331");
+		console.log("Worker connected to port 21331");
 
 		sock.on("message", function(topic, message) {
 			console.log(Buffer.from(topic).toString("ascii") + " - " + Buffer.from(message).toString("hex"));
@@ -549,10 +549,10 @@ async function loadDifficultyHistory(tipBlockHeight=null) {
 	}
 
 	global.difficultyHistory = await coreApi.getDifficultyByBlockHeights(heights);
-	
+
 	global.athDifficulty = 0;
 	for (let i = 0; i < heights.length; i++) {
-		if (global.difficultyHistory[`${heights[i]}`].difficulty > global.athDifficulty) {	
+		if (global.difficultyHistory[`${heights[i]}`].difficulty > global.athDifficulty) {
 			global.athDifficulty = global.difficultyHistory[heights[i]].difficulty;
 		}
 	}
@@ -774,7 +774,7 @@ expressApp.onStartup = async () => {
 
 			debugLog(`Starting ${global.coinConfig.ticker} RPC Explorer, v${global.appVersion} (code: unknown commit) at http://${config.host}:${config.port}${config.baseUrl}`);
 		}
-		
+
 		expressApp.continueStartup();
 
 	} else {
@@ -799,7 +799,7 @@ expressApp.onStartup = async () => {
 			try {
 				let absoluteFilepath = path.join(process.cwd(), "public", filepath);
 				let s3path = s3Path(filepath);
-				
+
 				const existingAsset = await cdnS3Bucket.get(s3path);
 
 				if (existingAsset) {

@@ -21,7 +21,7 @@ function getKeyDetails(extendedPubkey) {
 	if (extendedPubkey.match(/^(xpub|tpub).*$/)) {
 		keyDetails.outputType = "P2PKH";
 		keyDetails.outputTypeDesc = "Pay to Public Key Hash";
-		keyDetails.bip32Path = "m/44'/0'";
+		keyDetails.bip32Path = "m/44'/17'";
 
 		const xpub_tpub = global.activeBlockchain == "main" ? "xpub" : "tpub";
 		const ypub_upub = global.activeBlockchain == "main" ? "ypub" : "upub";
@@ -58,7 +58,7 @@ function getKeyDetails(extendedPubkey) {
 	} else if (extendedPubkey.match(/^(ypub|upub).*$/)) {
 		keyDetails.outputType = "P2WPKH in P2SH";
 		keyDetails.outputTypeDesc = "Pay to Witness Public Key Hash (P2WPKH) wrapped inside Pay to Script Hash (P2SH), aka Wrapped Segwit";
-		keyDetails.bip32Path = "m/49'/0'";
+		keyDetails.bip32Path = "m/49'/17'";
 
 		const xpub_tpub = global.activeBlockchain == "main" ? "xpub" : "tpub";
 		const zpub_vpub = global.activeBlockchain == "main" ? "zpub" : "vpub";
@@ -82,7 +82,7 @@ function getKeyDetails(extendedPubkey) {
 	} else if (extendedPubkey.match(/^(zpub|vpub).*$/)) {
 		keyDetails.outputType = "P2WPKH";
 		keyDetails.outputTypeDesc = "Pay to Witness Public Key Hash, aka Native Segwit";
-		keyDetails.bip32Path = "m/84'/0'";
+		keyDetails.bip32Path = "m/84'/17'";
 
 		const xpub_tpub = global.activeBlockchain == "main" ? "xpub" : "tpub";
 		const ypub_upub = global.activeBlockchain == "main" ? "ypub" : "upub";
@@ -150,9 +150,9 @@ function getXpubAddresses(extendedPubkey, receiveOrChange=0, limit=20, offset=0)
 
 // gapLimit=20, default as per bip32
 async function searchXpubTxids(extendedPubkey, gapLimit=20, addressLimit=-1) {
-	// addressLimit == -1 means we get every address with a transaction and 20 addresses gap at the end. 	
+	// addressLimit == -1 means we get every address with a transaction and 20 addresses gap at the end.
 	let sort = "desc";
-	
+
 	let txLimit = 20;
 	let txOffset = 0;
 	let addressCount = 0;
@@ -212,13 +212,13 @@ async function searchXpubTxids(extendedPubkey, gapLimit=20, addressLimit=-1) {
 		}
 
 		addressCount++;
-		
+
 		// gap of N (20) receive and change addresses found
 		if (gapCounts[0] >= gapLimit && gapCounts[1] >= gapLimit) {
 			break;
 		}
 	}
-	
+
 
 	return result;
 }
@@ -229,4 +229,3 @@ module.exports = {
 	getXpubAddresses: getXpubAddresses,
 	searchXpubTxids: searchXpubTxids
 };
-

@@ -1558,7 +1558,7 @@ router.get("/address/:address", asyncHandler(async (req, res, next) => {
 		let b58prefix = (global.activeBlockchain == "main" ? /^[F3].*$/ : /^[2mn].*$/);
 		if (address.match(b58prefix)) {
 			try {
-				res.locals.addressObj = bitcoinjs.address.fromBase58Check(address);
+				res.locals.addressObj = bitcoinjs.address.fromBase58GrsCheck(address);
 				res.locals.addressObj.hash = res.locals.addressObj.hash.toString("hex");
 
 				addressEncoding = "base58";

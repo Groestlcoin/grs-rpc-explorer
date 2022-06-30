@@ -275,7 +275,7 @@ router.get("/address/:address", asyncHandler(async (req, res, next) => {
 		let bech32Error = null;
 		let bech32mError = null;
 
-		if (address.match(/^[F32m].*$/)) {
+		if (address.match(/^[F32mn].*$/)) {
 			try {
 				let base58Data = bitcoinjs.address.fromBase58GrsCheck(address);
 				result.base58 = {hash:base58Data.hash.toString("hex"), version:base58Data.version};

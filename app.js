@@ -159,7 +159,7 @@ const systemMonitor = require("./app/systemMonitor.js");
 
 const normalizeActions = require("./app/normalizeActions.js");
 expressApp.use(require("./app/actionPerformanceMonitor.js")(statTracker, {
-	ignoredEndsWithActions: "\.js|\.css|\.svg|\.png|\.woff2",
+	ignoredEndsWithActions: /\.js|\.css|\.svg|\.png|\.woff2/,
 	ignoredStartsWithActions: `${config.baseUrl}snippet`,
 	normalizeAction: (action) => {
 		return normalizeActions(config.baseUrl, action);
@@ -263,6 +263,11 @@ const cdnItems = [
 
 	[`leaflet/leaflet.js`, `text/javascript`, "utf8"],
 	[`leaflet/leaflet.css`, `text/css`, "utf8"],
+	[`leaflet/images/layers.png`, `image/png`, "binary"],
+	[`leaflet/images/layers-2x.png`, `image/png`, "binary"],
+	[`leaflet/images/marker-icon-2x.png`, `image/png`, "binary"],
+	[`leaflet/images/marker-icon.png`, `image/png`, "binary"],
+	[`leaflet/images/marker-shadow.png`, `image/png`, "binary"],
 ];
 
 const cdnFilepathMap = {};

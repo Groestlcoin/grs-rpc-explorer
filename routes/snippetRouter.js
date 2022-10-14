@@ -37,8 +37,14 @@ router.get("/formatCurrencyAmount/:amt", function(req, res, next) {
 });
 
 router.get("/quote/random", function(req, res, next) {
-	res.locals.quoteIndex = utils.randomInt(0, btcQuotes.items.length);
-	res.locals.quote = btcQuotes.items[res.locals.quoteIndex];
+	let done = false;
+
+	while (!done) {
+		res.locals.quoteIndex = utils.randomInt(0, btcQuotes.items.length);
+		res.locals.quote = btcQuotes.items[res.locals.quoteIndex];
+
+		done = !utils.objHasProperty(res.locals.quote, "duplicateIndex");
+	}
 
 	res.render("snippets/quote");
 
@@ -62,6 +68,7 @@ router.get("/next-block", asyncHandler(async (req, res, next) => {
 
 		result.minFeeRate = nextBlockEstimate.minFeeRate;
 		result.maxFeeRate = nextBlockEstimate.maxFeeRate;
+		result.medianFeeRate = nextBlockEstimate.medianFeeRate;
 		result.minFeeTxid = nextBlockEstimate.minFeeTxid;
 		result.maxFeeTxid = nextBlockEstimate.maxFeeTxid;
 
@@ -72,6 +79,7 @@ router.get("/next-block", asyncHandler(async (req, res, next) => {
 
 	res.locals.minFeeRate = result.minFeeRate;
 	res.locals.maxFeeRate = result.maxFeeRate;
+	res.locals.medianFeeRate = result.medianFeeRate;
 	res.locals.txCount = result.txCount;
 	res.locals.totalWeight = result.totalWeight;
 	res.locals.totalFees = result.totalFees;

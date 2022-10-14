@@ -53,31 +53,31 @@ global.lruCaches = [ global.miscLruCache, global.blockLruCache, global.txLruCach
 
 (function () {
 	const pruneCaches = () => {
-		let totalLengthBefore = 0;
-		global.lruCaches.forEach(x => (totalLengthBefore += x.length));
+		let totalSizeBefore = 0;
+		global.lruCaches.forEach(x => (totalSizeBefore += x.size));
 
-		global.lruCaches.forEach(x => x.prune());
+		global.lruCaches.forEach(x => x.purgeStale());
 
-		let totalLengthAfter = 0;
-		global.lruCaches.forEach(x => (totalLengthAfter += x.length));
+		let totalSizeAfter = 0;
+		global.lruCaches.forEach(x => (totalSizeAfter += x.size));
 
 
-		statTracker.trackEvent("caches.pruned-items", (totalLengthBefore - totalLengthAfter));
+		statTracker.trackEvent("caches.pruned-items", (totalSizeBefore - totalSizeAfter));
 		
-		statTracker.trackValue("caches.misc.length", global.miscLruCache.length);
+		statTracker.trackValue("caches.misc.size", global.miscLruCache.size);
 		statTracker.trackValue("caches.misc.itemCount", global.miscLruCache.itemCount);
 
-		statTracker.trackValue("caches.block.length", global.blockLruCache.length);
+		statTracker.trackValue("caches.block.size", global.blockLruCache.size);
 		statTracker.trackValue("caches.block.itemCount", global.blockLruCache.itemCount);
 
-		statTracker.trackValue("caches.tx.length", global.txLruCache.length);
+		statTracker.trackValue("caches.tx.size", global.txLruCache.size);
 		statTracker.trackValue("caches.tx.itemCount", global.txLruCache.itemCount);
 
-		statTracker.trackValue("caches.mining.length", global.miningSummaryLruCache.length);
+		statTracker.trackValue("caches.mining.size", global.miningSummaryLruCache.size);
 		statTracker.trackValue("caches.mining.itemCount", global.miningSummaryLruCache.itemCount);
 
 
-		debugLog(`Pruned caches: ${totalLengthBefore.toLocaleString()} -> ${totalLengthAfter.toLocaleString()}`);
+		debugLog(`Pruned caches: ${totalSizeBefore.toLocaleString()} -> ${totalSizeAfter.toLocaleString()}`);
 	};
 
 	setInterval(pruneCaches, 60000);
@@ -96,10 +96,10 @@ if (!config.noInmemoryRpcCache) {
 		//debugLog(`cache.${cacheType}.${eventType}: ${cacheKey}`);
 	}
 
-	miscCaches.push(cacheUtils.createMemoryLruCache(global.miscLruCache, onMemoryCacheEvent));
-	blockCaches.push(cacheUtils.createMemoryLruCache(global.blockLruCache, onMemoryCacheEvent));
-	txCaches.push(cacheUtils.createMemoryLruCache(global.txLruCache, onMemoryCacheEvent));
-	miningSummaryCaches.push(cacheUtils.createMemoryLruCache(global.miningSummaryLruCache, onMemoryCacheEvent));
+	miscCaches.push(cacheUtils.createMemoryLruCache("misc", global.miscLruCache, onMemoryCacheEvent));
+	blockCaches.push(cacheUtils.createMemoryLruCache("block", global.blockLruCache, onMemoryCacheEvent));
+	txCaches.push(cacheUtils.createMemoryLruCache("tx", global.txLruCache, onMemoryCacheEvent));
+	miningSummaryCaches.push(cacheUtils.createMemoryLruCache("mining", global.miningSummaryLruCache, onMemoryCacheEvent));
 }
 
 if (redisCache.active) {
@@ -326,8 +326,9 @@ async function getNextBlockEstimate() {
 	let maxFeeRate = 0;
 	let minFeeTxid = null;
 	let maxFeeTxid = null;
+	let medianFeeRate = 0;
 
-	var parentTxIndexes = new Set();
+	let parentTxIndexes = new Set();
 	let templateWeight = 0;
 	blockTemplate.transactions.forEach(tx => {
 		templateWeight += tx.weight;
@@ -339,7 +340,8 @@ async function getNextBlockEstimate() {
 		}
 	});
 
-	var txIndex = 1;
+	let txIndex = 1;
+	let feeRates = [];
 	blockTemplate.transactions.forEach(tx => {
 		var feeRate = tx.fee / tx.weight * 4;
 		if (tx.depends && tx.depends.length > 0) {
@@ -359,6 +361,8 @@ async function getNextBlockEstimate() {
 		// their effective fee rate (which takes descendant fee rates
 		// into account)
 		if (!parentTxIndexes.has(txIndex) && (!tx.depends || tx.depends.length == 0)) {
+			feeRates.push(feeRate);
+
 			if (feeRate < minFeeRate) {
 				minFeeRate = feeRate;
 				minFeeTxid = tx.txid;
@@ -372,6 +376,10 @@ async function getNextBlockEstimate() {
 
 		txIndex++;
 	});
+
+	if (feeRates.length > 0) {
+		medianFeeRate = feeRates[Math.floor(feeRates.length / 2)];
+	}
 
 	const feeRateGroups = [];
 	var groupCount = 10;
@@ -422,6 +430,7 @@ async function getNextBlockEstimate() {
 		totalFees: totalFees,
 		minFeeRate: minFeeRate,
 		maxFeeRate: maxFeeRate,
+		medianFeeRate: medianFeeRate,
 		minFeeTxid: minFeeTxid,
 		maxFeeTxid: maxFeeTxid
 	};
@@ -803,6 +812,12 @@ function getBlocksByHeight(blockHeights) {
 		}).catch(function(err) {
 			reject(err);
 		});
+	});
+}
+
+function getBlockHeaderByHash(hash) {
+	return tryCacheThenRpcApi(blockCache, "getBlockHeaderByHash-" + hash, FIFTEEN_MIN, function() {
+		return rpcApi.getBlockHeaderByHash(hash);
 	});
 }
 
@@ -2237,6 +2252,7 @@ module.exports = {
 	getBlockStatsByHeight: getBlockStatsByHeight,
 	getBlocksStatsByHeight: getBlocksStatsByHeight,
 	buildBlockAnalysisData: buildBlockAnalysisData,
+	getBlockHeaderByHash: getBlockHeaderByHash,
 	getBlockHeaderByHeight: getBlockHeaderByHeight,
 	getBlockHeadersByHeight: getBlockHeadersByHeight,
 	getTxOut: getTxOut,

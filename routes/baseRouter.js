@@ -894,6 +894,7 @@ router.get("/next-block", asyncHandler(async (req, res, next) => {
 
 	res.locals.minFeeRate = 1000000;
 	res.locals.maxFeeRate = -1;
+	res.locals.medianFeeRate = -1;
 
 	const parentTxIndexes = new Set();
 	blockTemplate.transactions.forEach(tx => {
@@ -904,7 +905,8 @@ router.get("/next-block", asyncHandler(async (req, res, next) => {
 		}
 	});
 
-	var txIndex = 1;
+	let txIndex = 1;
+	let feeRates = [];
 	blockTemplate.transactions.forEach(tx => {
 		let feeRate = tx.fee / tx.weight * 4;
 
@@ -925,6 +927,8 @@ router.get("/next-block", asyncHandler(async (req, res, next) => {
 		// their effective fee rate (which takes descendant fee rates
 		// into account)
 		if (!parentTxIndexes.has(txIndex) && (!tx.depends || tx.depends.length == 0)) {
+			feeRates.push(feeRate);
+
 			if (feeRate > res.locals.maxFeeRate) {
 				res.locals.maxFeeRate = feeRate;
 			}
@@ -936,6 +940,10 @@ router.get("/next-block", asyncHandler(async (req, res, next) => {
 
 		txIndex++;
 	});
+
+	if (feeRates.length > 0) {
+		res.locals.medianFeeRate = feeRates[Math.floor(feeRates.length / 2)];
+	}
 
 	res.locals.blockTemplate = blockTemplate;
 

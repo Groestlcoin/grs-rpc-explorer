@@ -1,17 +1,19 @@
 ##### v3.?
 ###### Unreleased
 
+* Include median fee rate for next-block estimates, on homepage and at [/next-block](./next-block)
 * Minor fixes for running against Groestlcoin Core v23
 * URL change: /mining-template -> /next-block (redirect is included for compatibility)
 * Homepage additions
 	* Show difficulty ATH comparison
 	* Show "Next Block" fullness
 	* Show a banner if 'today' is a Groestlcoin 'Holiday' (see more below)
-* Tweaks to API, see [/api/changelog](./api/changelog)
+* Several new API actions/changes; see [/api/changelog](./api/changelog)
 * New [/holidays](./holidays), a curated list of Groestlcoin 'Holidays'
 * Support for serving static assets via a configurable CDN
 * Misc fixes for erroneous data display on non-mainnet nodes
 * Switch from fontawesome to bootstrap-icons v1.8.0
+* Refreshed miner-identification database
 * UI/UX tweaks
 * Updated dependencies
 

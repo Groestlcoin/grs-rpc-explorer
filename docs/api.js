@@ -204,6 +204,13 @@ module.exports = {
 		},
 		{
 			"category":"mempool",
+			"url":"/api/mempool/summary",
+			"desc":"Returns a summary of Groestlcoin Core's mempool (full output from 'getmempoolinfo')",
+			"returnType":"json",
+			"example": {"loaded":true,"size":225,"bytes":76209,"usage":410496,"total_fee":0.01763495,"maxmempool":15000000,"mempoolminfee":0.00001,"minrelaytxfee":0.00001,"unbroadcastcount":0}
+		},
+		{
+			"category":"mempool",
 			"url":"/api/mempool/fees",
 			"desc":"Returns recommended fee rates in gros/vB for next block, 2 min, 3 min, and 4 min.",
 			"returnType":"json",
@@ -217,7 +224,10 @@ module.exports = {
 			"category":"price",
 			"url":"/api/price",
 			"desc":"Returns the price of 1 GRS, in USD, EUR, GBP, and XAU",
-			"returnType":"json"
+			"returnType":"json",
+			"optionalParams": {
+				"format":"Set to 'true' to include thousands-separator formatting in results"
+			}
 		},
 		{
 			"category":"price",
@@ -225,7 +235,10 @@ module.exports = {
 			"desc":"Returns the price of 1 GRS, in one of USD, EUR, GBP, XAU",
 			"params":[{name: "currency", "options": ["usd", "eur", "gbp", "xau"]}],
 			"returnType":"number",
-			"testUrl": "/api/price/usd"
+			"testUrl": "/api/price/usd",
+			"optionalParams": {
+				"format":"Set to 'true' to include thousands-separator formatting in results"
+			}
 		},
 		{
 			"category":"price",

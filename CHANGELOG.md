@@ -1,5 +1,5 @@
-##### v3.?
-###### Unreleased
+##### v3.4.0
+###### Unreleased (beta)
 
 * Include median fee rate for next-block estimates, on homepage and at [/next-block](./next-block)
 * Minor fixes for running against Groestlcoin Core v23
@@ -14,6 +14,7 @@
 * Misc fixes for erroneous data display on non-mainnet nodes
 * Switch from fontawesome to bootstrap-icons v1.8.0
 * Refreshed miner-identification database
+* Refreshed "Dark" theme with blues toned down (legacy dark theme still available)
 * UI/UX tweaks
 * Updated dependencies
 

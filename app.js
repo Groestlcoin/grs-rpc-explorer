@@ -223,8 +223,9 @@ if (config.baseUrl != '/') {
 
 // if a CDN is configured, these assets will be uploaded at launch, then referenced from there
 const cdnItems = [
-	[`style/dark.css`, `text/css`, "utf8"],
-	[`style/light.css`, `text/css`, "utf8"],
+	[`style/dark.min.css`, `text/css`, "utf8"],
+	[`style/light.min.css`, `text/css`, "utf8"],
+	[`style/dark-v1.min.css`, `text/css`, "utf8"],
 	[`style/highlight.min.css`, `text/css`, "utf8"],
 	[`style/dataTables.bootstrap4.min.css`, `text/css`, "utf8"],
 	[`style/bootstrap-icons.css`, `text/css`, "utf8"],
@@ -1150,7 +1151,7 @@ expressApp.locals.assetUrl = (path) => {
 
 // debug setting to skip js/css integrity checks
 const skipIntegrityChecks = false;
-const resourceIntegrityHashes = JSON.parse(fs.readFileSync(path.join(process.cwd(), "public/txt/resource-integrity.json")));
+const resourceIntegrityHashes = require("./app/resourceIntegrityHashes.js");
 
 expressApp.locals.assetIntegrity = (filename) => {
 	if (!skipIntegrityChecks && resourceIntegrityHashes[filename]) {

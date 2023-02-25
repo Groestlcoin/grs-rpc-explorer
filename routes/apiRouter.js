@@ -17,9 +17,9 @@ const Decimal = require("decimal.js");
 const asyncHandler = require("express-async-handler");
 const markdown = require("markdown-it")();
 
-const utils = require('./../app/utils.js');
 const coins = require("./../app/coins.js");
 const config = require("./../app/config.js");
+const utils = require('./../app/utils.js');
 const coreApi = require("./../app/api/coreApi.js");
 const addressApi = require("./../app/api/addressApi.js");
 const xyzpubApi = require("./../app/api/xyzpubApi.js");
@@ -144,26 +144,21 @@ router.get("/block/header/:hashOrHeight", asyncHandler(async (req, res, next) =>
 
 /// TRANSACTIONS
 
-router.get("/tx/:txid", function(req, res, next) {
+router.get("/tx/:txid", asyncHandler(async (req, res, next) => {
 	let txid = utils.asHash(req.params.txid);
-
 	let promises = [];
-
 	let txInputLimit = (res.locals.crawlerBot) ? 3 : -1;
 
-	promises.push(coreApi.getRawTransactionsWithInputs([txid], txInputLimit));
-
-	Promise.all(promises).then(function(results) {
-		let outJson = results[0].transactions[0];
-		let txInputs = results[0].txInputsByTransaction[txid] || {};
+	try {
+		var results = await coreApi.getRawTransactionsWithInputs([txid], txInputLimit);
+		let outJson = results.transactions[0];
+		let txInputs = results.txInputsByTransaction[txid] || {};
 
 		let inputBtc = 0;
 		if (txInputs[0]) {
 			for (let key in txInputs) {
 				let item = txInputs[key];
-
 				inputBtc += item["value"] * global.coinConfig.baseCurrencyUnit.multiplier;
-
 				outJson.vin[key].scriptSig.address = item.scriptPubKey.address;
 				outJson.vin[key].scriptSig.type = item.scriptPubKey.type;
 				outJson.vin[key].value = item.value;
@@ -173,7 +168,6 @@ router.get("/tx/:txid", function(req, res, next) {
 		let outputBtc = 0;
 		for (let key in outJson.vout) {
 			let item = outJson.vout[key];
-
 			outputBtc += item.value * global.coinConfig.baseCurrencyUnit.multiplier;
 		}
 
@@ -182,24 +176,25 @@ router.get("/tx/:txid", function(req, res, next) {
 			"unit": "GRS"
 		};
 
+		if (outJson.confirmations == null) {
+			outJson.mempool = await coreApi.getMempoolTxDetails(txid, false);
+		}
+
 		if (global.specialTransactions && global.specialTransactions[txid]) {
 			let funInfo = global.specialTransactions[txid];
-
 			outJson.fun = funInfo;
 		}
 
 		res.json(outJson);
 
-		next();
-
-	}).catch(function(err) {
+	} catch(err) {
 		utils.logError("10328fwgdaqw", err);
-
 		res.json({success:false, error:err});
+	};
 
-		next();
-	});
-});
+	next();
+
+}));
 
 router.get("/tx/volume/24h", function(req, res, next) {
 	try {
@@ -803,6 +798,12 @@ router.get("/mempool/count", function(req, res, next) {
 	}).catch(next);
 });
 
+router.get("/mempool/summary", function(req, res, next) {
+	coreApi.getMempoolInfo().then(function(info){
+		res.json(info);
+	}).catch(next);
+});
+
 router.get("/mempool/fees", function(req, res, next) {
 	var feeConfTargets = [1, 2, 3, 4];
 	coreApi.getSmartFeeEstimates("CONSERVATIVE", feeConfTargets).then(function(rawSmartFeeEstimates){
@@ -845,8 +846,8 @@ router.get("/price/:currency/sats", function(req, res, next) {
 	if (global.exchangeRates != null && global.exchangeRates[currency] != null) {
 		var satsRateData = utils.satoshisPerUnitOfLocalCurrency(currency);
 		result = satsRateData.amtRaw;
-	}
-	else if (currency == "xau" && global.exchangeRates != null && global.goldExchangeRates != null) {
+
+	} else if (currency == "xau" && global.exchangeRates != null && global.goldExchangeRates != null) {
 		var dec = new Decimal(amount);
 		dec = dec.times(global.exchangeRates.usd).dividedBy(global.goldExchangeRates.usd);
 		var satCurrencyType = global.currencyTypes["gro"];
@@ -873,8 +874,8 @@ router.get("/price/:currency/marketcap", function(req, res, next) {
 		if (global.exchangeRates != null && global.exchangeRates[currency] != null) {
 			var formatData = utils.formatExchangedCurrency(amount, currency);
 			price = parseFloat(formatData.valRaw).toFixed(2);
-		}
-		else if (currency == "xau" && global.exchangeRates != null && global.goldExchangeRates != null) {
+
+		} else if (currency == "xau" && global.exchangeRates != null && global.goldExchangeRates != null) {
 			var dec = new Decimal(amount);
 			dec = dec.times(global.exchangeRates.usd).dividedBy(global.goldExchangeRates.usd);
 			var exchangedAmt = parseFloat(Math.round(dec * 100) / 100).toFixed(2);
@@ -892,10 +893,17 @@ router.get("/price/:currency", function(req, res, next) {
 	var result = 0;
 	var amount = 1.0;
 	var currency = req.params.currency.toLowerCase();
+	let format = (req.query.format == "true");
 
 	if (global.exchangeRates != null && global.exchangeRates[currency] != null) {
 		var formatData = utils.formatExchangedCurrency(amount, currency);
-		result = formatData.val;
+
+		if (format) {
+			result = formatData.val;
+
+		} else {
+			result = formatData.valRaw;
+		}
 	} else if (currency == "xau" && global.exchangeRates != null && global.goldExchangeRates != null) {
 		var dec = new Decimal(amount);
 		dec = dec.times(global.exchangeRates.usd).dividedBy(global.goldExchangeRates.usd);
@@ -911,12 +919,18 @@ router.get("/price/:currency", function(req, res, next) {
 router.get("/price", function(req, res, next) {
 	var amount = 1.0;
 	var result = {};
+	let format = (req.query.format == "true");
 
 	["usd", "eur", "gbp", "xau"].forEach(currency => {
 		if (global.exchangeRates != null && global.exchangeRates[currency] != null) {
 			var formatData = utils.formatExchangedCurrency(amount, currency);
-			result[currency] = formatData.val;
 
+			if (format) {
+				result[currency] = formatData.val;
+
+			} else {
+				result[currency] = formatData.valRaw;
+			}
 		} else if (currency == "xau" && global.exchangeRates != null && global.goldExchangeRates != null) {
 			var dec = new Decimal(amount);
 			dec = dec.times(global.exchangeRates.usd).dividedBy(global.goldExchangeRates.usd);

@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const url = require('url');
 const path = require('path');
 
+const apiDocs = require("../docs/api.js");
+
 let baseUrl = (process.env.BTCEXP_BASEURL || "/").trim();
 if (!baseUrl.startsWith("/")) {
 	baseUrl = "/" + baseUrl;
@@ -35,15 +37,6 @@ const currentCoin = process.env.BTCEXP_COIN || "GRS";
 
 const rpcCred = credentials.rpc;
 
-if (rpcCred.cookie && !rpcCred.username && !rpcCred.password && fs.existsSync(rpcCred.cookie)) {
-	console.log(`Loading RPC cookie file: ${rpcCred.cookie}`);
-
-	[ rpcCred.username, rpcCred.password ] = fs.readFileSync(rpcCred.cookie).toString().split(':', 2);
-
-	if (!rpcCred.password) {
-		throw new Error(`Cookie file ${rpcCred.cookie} in unexpected format`);
-	}
-}
 
 const cookieSecret = process.env.BTCEXP_COOKIE_SECRET
  || (rpcCred.password && crypto.createHmac('sha256', JSON.stringify(rpcCred))
@@ -95,8 +88,11 @@ const slowDeviceMode = (process.env.BTCEXP_SLOW_DEVICE_MODE.toLowerCase() == "tr
 module.exports = {
 	host: process.env.BTCEXP_HOST || "127.0.0.1",
 	port: process.env.PORT || process.env.BTCEXP_PORT || 3002,
+	siteDomain: process.env.BTCEXP_SITE_DOMAIN || "localhost",
+	secureSite: process.env.BTCEXP_SECURE_SITE == "true",
 
 	baseUrl: baseUrl,
+	apiBaseUrl: apiDocs.baseUrl,
 
 	coin: currentCoin,
 
@@ -129,9 +125,9 @@ module.exports = {
 	},
 
 	rpcBlacklist:
-	  process.env.BTCEXP_RPC_ALLOWALL.toLowerCase() == "true"  ? []
-	: process.env.BTCEXP_RPC_BLACKLIST ? process.env.BTCEXP_RPC_BLACKLIST.split(',').filter(Boolean)
-	: [
+		process.env.BTCEXP_RPC_ALLOWALL.toLowerCase() == "true"  ? []
+		: process.env.BTCEXP_RPC_BLACKLIST ? process.env.BTCEXP_RPC_BLACKLIST.split(',').filter(Boolean)
+		: [
 		"addnode",
 		"backupwallet",
 		"bumpfee",
@@ -227,7 +223,7 @@ module.exports = {
 		toolSections: [
 			{name: "Basics", items: [0, 2]},
 			{name: "Mempool", items: [4, 16, 5]},
-			{name: "Analysis", items: [9, 18, 10, 11, 12, 3]},
+			{name: "Analysis", items: [9, 18, 10, 11, 12, 3]}, // 20 next halving removed
 			{name: "Technical", items: [15, 6, 7, 1]},
 			{name: "Fun", items: [8, 17, 19]}, // 13 whitepaper extracter removed
 		]
@@ -259,7 +255,7 @@ module.exports = {
 
 	/* 14 */	{name:"Predicted Blocks", url:"./predicted-blocks", desc:"View predicted future blocks based on the current mempool.", iconClass:"bi-arrow-right-circle"},
 
-	/* 15 */	{name:"API", url:"./api/docs", desc:"View docs for the public API.", iconClass:"bi-braces-asterisk"},
+	/* 15 */	{name:"API", url:`.${apiDocs.baseUrl}/docs`, desc:"View docs for the public API.", iconClass:"bi-braces-asterisk"},
 
 	/* 16 */	{name:"Next Block", url:"./next-block", desc:"View a prediction for the next block, based on the current mempool.", iconClass:"bi-minecart-loaded"},
 	/* 17 */	{name:"Quotes", url:"./quotes", desc:"Curated list of Groestlcoin-related quotes.", iconClass:"bi-chat-quote"},
@@ -267,6 +263,8 @@ module.exports = {
 	/* 18 */	{name:"UTXO Set", url:"./utxo-set", desc:"View the latest UTXO Set.", iconClass:"bi-list-columns"},
 
 	/* 19 */	{name:"Holidays", url:"./holidays", desc:"Curated list of Groestlcoin 'Holidays'.", iconClass:"bi-calendar-heart"},
+
+	/* 20 */	{name:"Next Halving", url:"./next-halving", desc:"Estimated details about the next halving.", iconClass:"bi-square-half"},
 	]
 };
 

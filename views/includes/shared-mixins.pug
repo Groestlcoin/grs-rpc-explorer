@@ -549,7 +549,10 @@ mixin timestamp(timestamp, includeAgo=true, formatString)
 			- timeAgo = moment.duration(moment.utc(new Date(parseInt(timestamp) * 1000)).diff(moment.utc(new Date())));
 
 			small.text-muted.ms-2 (+
-				| #{timeAgo.format()}
+				- let format = timeAgo.format();
+				- let formatParts = format.split(",").map(x => x.trim());
+				- formatParts = formatParts.map(x => { return x.startsWith("0 ") ? "" : x; }).filter(x => x.length > 0);
+				| #{formatParts.join(", ")}
 				span )
 		else
 			small.text-muted.ms-2 (
@@ -854,7 +857,7 @@ mixin graphPageScriptSetup(dateAdapterNeeded=false)
 		script(src=assetUrl(`./js/moment.min.js`), integrity=assetIntegrity("moment.min.js"), crossorigin="anonymous")
 		script(src=assetUrl(`./js/chartjs-adapter-moment.min.js`), integrity=assetIntegrity("chartjs-adapter-moment.min.js"), crossorigin="anonymous")
 
-	if (userSettings.uiTheme && userSettings.uiTheme == "dark")
+	if (userSettings.uiTheme && ["dark", "dark-v1"].includes(userSettings.uiTheme.toLowerCase()))
 		script.
 			Chart.defaults.color='white';
 			var gridLineColor = "#1a4280";
@@ -866,35 +869,40 @@ mixin graphPageScriptSetup(dateAdapterNeeded=false)
 	script(src=assetUrl('./js/decimal.js'))
 
 
-mixin quote(quote, quoteIndex=-1)
-	blockquote.blockquote
-		span.fs-4.font-serif "
+mixin quote(quote, quoteIndex=-1, options={fontSize: 3, align:"start", includeQuotes:false})
+	- let fontSize = (options && options.fontSize) ? options.fontSize : 3;
+	- let align = (options && options.align) ? options.align : "start";
+	- let includeQuotes = (options && options.includeQuotes != null) ? options.includeQuotes : false;
 
-		if (quoteIndex >= 0)
-			a.fs-5.font-serif.text-reset(href=`./quote/${quoteIndex}`) #{quote.text}
-		else
-			span.fs-5.font-serif #{quote.text}
+	blockquote.blockquote.mb-0(class=((align == "center") ? "text-center" : false ))
+		span.font-serif.fw-light(class=`fs-${fontSize}`)
 
-		span.fs-4.font-serif "
-		br
-		.ms-8.mt-2
+			if (options && options.includeQuotes)
+				span(style="font-size: 110%;") "&nbsp;
+
+			if (quoteIndex >= 0)
+				a.text-reset(href=`./quote/${quoteIndex}`) #{quote.text}
+			else
+				span #{quote.text}
+
+			if (options && options.includeQuotes)
+				span(style="font-size: 110%;") &nbsp;"
+
+		.ms-8.mt-2(class=`fs-${fontSize + 2}`)
 			if (quote.speaker.indexOf("https://twitter.com") >= 0)
 				- var account = quote.speaker.substring("https://twitter.com/".length);
 				| —
 				a.fs-5(href=quote.speaker, target="_blank") @#{account}
 
 			else
-				span.fs-5 — #{quote.speaker}
+				span — #{quote.speaker}
 
-			if (quote.date)
-				small.fw-light , #{quote.date}
+			small.fw-light ,&nbsp;
+				if (quote.url)
+					a(href=quote.url, target="_blank") #{quote.date}
 
-
-			if (quote.url)
-				small.text-muted.ms-2 (
-					a(href=quote.url, target="_blank") ref
-						i.bi-box-arrow-up-right.ms-2
-					| )
+				else
+					| #{quote.date}
 
 			if (quote.context)
 				div

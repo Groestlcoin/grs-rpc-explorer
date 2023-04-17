@@ -73,7 +73,7 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const session = require("express-session");
 const MemoryStore = require('memorystore')(session);
-const csurf = require("csurf");
+const csrfApi = require("csurf");
 const config = require("./app/config.js");
 const simpleGit = require('simple-git');
 const utils = require("./app/utils.js");
@@ -211,10 +211,13 @@ const sessionConfig = {
 	resave: false,
 	saveUninitialized: true,
 	cookie: {
-		secure: config.secureSite,
-		domain: config.siteDomain
+		secure: config.secureSite
 	}
 };
+
+if (config.secureSite) {
+	expressApp.set('trust proxy', 1);
+}
 
 // Helpful reference for production: nginx HTTPS proxy:
 // https://gist.github.com/nikmartin/5902176
@@ -1091,7 +1094,8 @@ expressApp.use(function(req, res, next) {
 	next();
 });
 
-expressApp.use(csurf(), (req, res, next) => {
+const csrfProtection = csrfApi();
+expressApp.use(csrfProtection, (req, res, next) => {
 	res.locals.csrfToken = req.csrfToken();
 
 	next();

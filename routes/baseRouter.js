@@ -4,7 +4,7 @@ const debug = require("debug");
 const debugLog = debug("btcexp:router");
 
 const express = require('express');
-const csurf = require('csurf');
+const csrfApi = require('csurf');
 const router = express.Router();
 const util = require('util');
 const moment = require('moment');
@@ -28,7 +28,7 @@ const addressApi = require("./../app/api/addressApi.js");
 const rpcApi = require("./../app/api/rpcApi.js");
 const btcQuotes = require("./../app/coins/btcQuotes.js");
 
-const forceCsrf = csurf({ ignoreMethods: [] });
+const forceCsrf = csrfApi({ ignoreMethods: [] });
 
 let noTxIndexMsg = "\n\nYour node does not have **txindex** enabled. Without it, you can only lookup wallet, mempool, and recently confirmed transactions by their **txid**. Searching for non-wallet transactions that were confirmed more than "+config.noTxIndexSearchDepth+" blocks ago is only possible if the confirmed block height is available.";
 
@@ -961,12 +961,12 @@ router.post("/search", function(req, res, next) {
 		return res.redirect("./tx/" + query);
 	}
 
-	let parseAddressData = utils.tryParseAddress(query);
+	let parseAddressData = utils.tryParseAddress(rawCaseQuery);
 
 	if (false) {
 		if (parseAddressData.errors) {
 			parseAddressData.errors.forEach(err => {
-				utils.logError("asdfhuadf", err);
+				utils.logError("19238rfehdusd", err, {address:query});
 			});
 		}
 	}
@@ -1879,12 +1879,13 @@ router.get("/rpc-browser", asyncHandler(async (req, res, next) => {
 		return;
 	}
 
+	let method = "unknown";
+	let argValues = [];
+
 	try {
 		const helpContent = await coreApi.getHelp();
 		res.locals.gethelp = helpContent;
 
-		let method = "unknown";
-		let argValues = [];
 
 		if (req.query.method) {
 			method = req.query.method;
@@ -1934,9 +1935,24 @@ router.get("/rpc-browser", asyncHandler(async (req, res, next) => {
 
 								break;
 
-							} else if (argProperties[j] === "string" || argProperties[j] === "numeric or string" || argProperties[j] === "string or numeric") {
+							} else if (argProperties[j] === "string") {
 								if (req.query.args[i]) {
 									argValues.push(req.query.args[i].replace(/[\r]/g, ''));
+								}
+
+								break;
+
+							} else if (argProperties[j] === "numeric or string" || argProperties[j] === "string or numeric") {
+								if (req.query.args[i]) {
+									let stringVal = req.query.args[i].replace(/[\r]/g, '');
+									let numberVal = parseInt(stringVal);
+
+									if (numberVal.toString() == numberVal) {
+										argValues.push(numberVal);
+
+									} else {
+										argValues.push(stringVal);
+									}
 								}
 
 								break;
@@ -1974,7 +1990,7 @@ router.get("/rpc-browser", asyncHandler(async (req, res, next) => {
 					return;
 				}
 
-				//let csurfPromise =
+				//let csrfPromise =
 
 				await new Promise((resolve, reject) => {
 					forceCsrf(req, res, async (err) => {

@@ -20,7 +20,7 @@ block content
 
 					+summaryItem("Date / Time")
 						if (block.time)
-							+timestamp(block.time)
+							+timestamp(block.time, {agoOptions:{oneElement:true}})
 
 						else
 							| ?
@@ -124,7 +124,7 @@ block content
 
 							+summaryItem("Date / Time")
 								if (tx.time)
-									+timestamp(result.getrawtransaction.time)
+									+timestamp(result.getrawtransaction.time, {agoOptions:{oneElement:true}})
 
 
 						if (isCoinbaseTx)
@@ -392,7 +392,7 @@ block content
 			+pageTab("JSON")
 				if (result.getrawtransaction.hex.length <= 50000)
 					- var pillTabs = ["Transaction"];
-					
+
 					if (!mempoolDetails)
 						- pillTabs.push("Block Header");
 

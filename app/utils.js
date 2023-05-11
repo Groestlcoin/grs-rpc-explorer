@@ -467,24 +467,69 @@ function ellipsizeMiddle(str, length, replacement="…", extraCharAtStart=true) 
 	}
 }
 
-function shortenTimeDiff(str) {
-	str = str.replace(" years", "y");
-	str = str.replace(" year", "y");
 
-	str = str.replace(" months", "mo");
-	str = str.replace(" month", "mo");
 
-	str = str.replace(" weeks", "w");
-	str = str.replace(" week", "w");
+// options:
+//  - oneElement (default: false)
+//  - stripZeroes (default: true)
+//  - shortenDurationNames (default: true)
+//  - outputCommas (default: true)
+function summarizeDuration(duration, options={}) {
+	let oneElement = "oneElement" in options ? options.oneElement : false;
+	let stripZeroes = "stripZeroes" in options ? options.stripZeroes : true;
+	let shortenDurationNames = "shortenDurationNames" in options ? options.shortenDurationNames : true;
+	let outputCommas = "outputCommas" in options ? options.outputCommas : true;
 
-	str = str.replace(" days", "d");
-	str = str.replace(" day", "d");
+	//console.log(JSON.stringify(options) + " - " + oneElement + " - " + stripZeroes + " - " + shortenDurationNames + " - " + outputCommas);
 
-	str = str.replace(" hours", "hr");
-	str = str.replace(" hour", "hr");
+	let formatParts = duration.format().split(",").map(x => x.trim());
+	let str = formatParts.join(", ");
 
-	str = str.replace(" minutes", "min");
-	str = str.replace(" minute", "min");
+	if (oneElement) {
+		let parts = [duration.asYears(), duration.asMonths(), duration.asWeeks(), duration.asDays(), duration.asHours(), duration.asMinutes(), duration.asSeconds()];
+		let partNames = ["years", "months", "weeks", "days", "hours", "minutes", "seconds"];
+
+		for (let i = 0; i < parts.length; i++) {
+			if (parts[i] > 1) {
+				str = `${new Decimal(parts[i]).toDP(1)} ${partNames[i]}`;
+
+				break;
+			}
+		}
+	} else if (stripZeroes) {
+		// strip duration elements with zero magnitude (e.g. 11 months 0 days 12 hours)
+		formatParts = formatParts.map(x => { return x.startsWith("0 ") ? "" : x; }).filter(x => x.length > 0);
+
+		// hack: moment.js seems to have a bug where there can be formatted items that include "-0" magnitude elements
+		formatParts = formatParts.map(x => { return x.startsWith("-0 ") ? "" : x; }).filter(x => x.length > 0);
+
+		str = formatParts.join(", ");
+	}
+	
+
+	if (shortenDurationNames) {
+		str = str.replace(" years", "y");
+		str = str.replace(" year", "y");
+
+		str = str.replace(" months", "mo");
+		str = str.replace(" month", "mo");
+
+		str = str.replace(" weeks", "w");
+		str = str.replace(" week", "w");
+
+		str = str.replace(" days", "d");
+		str = str.replace(" day", "d");
+
+		str = str.replace(" hours", "hr");
+		str = str.replace(" hour", "hr");
+
+		str = str.replace(" minutes", "min");
+		str = str.replace(" minute", "min");
+	}
+
+	if (!outputCommas) {
+		str = str.split(", ").join(" ");
+	}
 
 	return str;
 }
@@ -1384,7 +1429,7 @@ function difficultyAdjustmentEstimates(eraStartBlockHeader, currentBlockHeader) 
 	};
 }
 
-function nextHalvingEstimates(eraStartBlockHeader, currentBlockHeader) {
+function nextHalvingEstimates(eraStartBlockHeader, currentBlockHeader, difficultyAdjustmentDataArg=null) {
 	let blockCount = currentBlockHeader.height;
 	let halvingBlockInterval = coinConfig.halvingBlockIntervalsByNetwork[global.activeBlockchain];
 	let halvingCount = parseInt(blockCount / halvingBlockInterval);
@@ -1404,7 +1449,10 @@ function nextHalvingEstimates(eraStartBlockHeader, currentBlockHeader) {
 		};
 	}
 
-	let difficultyAdjustmentData = difficultyAdjustmentEstimates(eraStartBlockHeader, currentBlockHeader);
+	let difficultyAdjustmentData = difficultyAdjustmentDataArg;
+	if (!difficultyAdjustmentData) {
+		difficultyAdjustmentData = difficultyAdjustmentEstimates(eraStartBlockHeader, currentBlockHeader);
+	}
 
 	let currDifficultyEraTimeDifferential = (coinConfig.targetBlockTimeSeconds - difficultyAdjustmentData.timePerBlock) * difficultyAdjustmentData.blocksLeft;
 
@@ -1588,7 +1636,7 @@ module.exports = {
 	buildQrCodeUrls: buildQrCodeUrls,
 	ellipsize: ellipsize,
 	ellipsizeMiddle: ellipsizeMiddle,
-	shortenTimeDiff: shortenTimeDiff,
+	summarizeDuration: summarizeDuration,
 	outputTypeAbbreviation: outputTypeAbbreviation,
 	outputTypeName: outputTypeName,
 	asHash: asHash,

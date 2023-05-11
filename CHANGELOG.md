@@ -2,15 +2,16 @@
 ###### Unreleased (beta)
 
 * Breaking changes to the API (see [./api/changelog](/api/changlog))
-* Include median fee rate for next-block estimates, on homepage and at [/next-block](./next-block)
+* Homepage
+	* Show difficulty ATH comparison
+	* Show "Next Block" fullness
+	* Progress bar for difficulty adjustment estimate
+	* Include median fee rate for next-block estimates (also on [/next-block](./next-block))
+	* Show a banner if 'today' is a Groestlcoin 'Holiday' (see more below)
 * Minor fixes for running against Groestlcoin Core v23
 * Block Analysis: include top "days destroyed" transactions
 * URL change: /mining-template -> /next-block (redirect is included for compatibility)
-* Homepage additions
-	* Show difficulty ATH comparison
-	* Show "Next Block" fullness
-	* Show a banner if 'today' is a Groestlcoin 'Holiday' (see more below)
-* On Extended PubKey pages, include balance data for various address (if Electrum-GRS server is configured)
+* On Extended PubKey pages, include balance data for various address (if Electrum server is configured)
 * Several new API actions/changes; see [/api/changelog](./api/changelog)
 * New [/holidays](./holidays), a curated list of Groestlcoin 'Holidays'
 * Support for different view options on [/fun](./fun)

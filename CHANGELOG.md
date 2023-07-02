@@ -1,7 +1,7 @@
 ##### v3.4.0
-###### Unreleased (beta)
+###### 2023-06-14
 
-* Breaking changes to the API (see [./api/changelog](/api/changlog))
+* Breaking changes to the API (see [./api/changelog](/api/changelog))
 * Homepage
 	* Show difficulty ATH comparison
 	* Show "Next Block" fullness

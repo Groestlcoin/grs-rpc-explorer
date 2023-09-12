@@ -84,7 +84,7 @@ if (exchangeRates)
 	- let halvingProgressPercent = new Decimal(100).minus(new Decimal(nextHalvingData.blocksUntilNextHalving).dividedBy(nextHalvingData.halvingBlockInterval).times(100));
 
 	if (nextHalvingData && halvingProgressPercent > 65)
-		- halvingShown = true;
+		- halvingShown = false;
 
 	+summaryRow(2 + (halvingShown ? 1 : 0) + (hashrate7d ? 1 : 0) + (chainTxStats && chainTxStats[7 * targetBlocksPerDay] ? 1 : 0) + (difficultyAdjustmentData ? 1 : 0))
 		if (hashrate7d)

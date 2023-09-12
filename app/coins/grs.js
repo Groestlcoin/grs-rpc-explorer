@@ -128,6 +128,13 @@ module.exports = {
 		"signet": 210000
 	},
 
+	terminalHalvingCountByNetwork: {
+		"main": 32,
+		"test": 32,
+		"regtest": 32,
+		"signet": 32
+	},
+
 	// used for supply estimates that don't need full gettxoutset accuracy
 	coinSupplyCheckpointsByNetwork: {
 		"main": [ 3763899, new Decimal(78427388) ],

@@ -878,7 +878,7 @@ expressApp.onStartup = async () => {
 function connectToRpcServer() {
 	// reload credentials, the main "config.credentials.rpc" can be stale
 	// since the username/password can be sourced from the auth cookie
-	// which changes each startup of bitcoind
+	// which changes each startup of groestlcoind
 	let credentialsForRpcConnect = config.credentials.loadFreshRpcCredentials();
 
 	debugLog(`RPC Credentials: ${JSON.stringify(utils.obfuscateProperties(credentialsForRpcConnect, ["password"]), null, 4)}`);

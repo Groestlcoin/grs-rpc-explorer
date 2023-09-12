@@ -90,7 +90,7 @@ In either case, refer to [.env-sample](.env-sample) for a list of the options an
 For configuring with CLI arguments, run `grs-rpc-explorer --help` for the full list of options. An example execution is:
 
 ```bash
-grs-rpc-explorer --port 8080 --bitcoind-port 18443 --bitcoind-cookie ~/.groestlcoin/regtest/.cookie
+grs-rpc-explorer --port 8080 --groestlcoind-port 18443 --groestlcoind-cookie ~/.groestlcoin/regtest/.cookie
 ```
 
 #### Demo site settings

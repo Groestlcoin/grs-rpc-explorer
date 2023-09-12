@@ -8,17 +8,17 @@ const fs = require("fs");
 const debug = require("debug");
 const debugLog = debug("btcexp:config");
 
-const btcUri = process.env.BTCEXP_BITCOIND_URI ? url.parse(process.env.BTCEXP_BITCOIND_URI, true) : { query: { } };
+const btcUri = process.env.BTCEXP_GROESTLCOIND_URI ? url.parse(process.env.BTCEXP_GROESTLCOIND_URI, true) : { query: { } };
 const btcAuth = btcUri.auth ? btcUri.auth.split(':') : [];
 
 
 
 
 function loadFreshRpcCredentials() {
-	let username = btcAuth[0] || process.env.BTCEXP_BITCOIND_USER;
-	let password = btcAuth[1] || process.env.BTCEXP_BITCOIND_PASS;
+	let username = btcAuth[0] || process.env.BTCEXP_GROESTLCOIND_USER;
+	let password = btcAuth[1] || process.env.BTCEXP_GROESTLCOIND_PASS;
 
-	let authCookieFilepath = btcUri.query.cookie || process.env.BTCEXP_BITCOIND_COOKIE || path.join(os.homedir(), '.groestlcoin', '.cookie');
+	let authCookieFilepath = btcUri.query.cookie || process.env.BTCEXP_GROESTLCOIND_COOKIE || path.join(os.homedir(), '.groestlcoin', '.cookie');
 
 	let authType = "usernamePassword";
 
@@ -37,8 +37,8 @@ function loadFreshRpcCredentials() {
 	}
 
 	return {
-		host: btcUri.hostname || process.env.BTCEXP_BITCOIND_HOST || "127.0.0.1",
-		port: btcUri.port || process.env.BTCEXP_BITCOIND_PORT || 1441,
+		host: btcUri.hostname || process.env.BTCEXP_GROESTLCOIND_HOST || "127.0.0.1",
+		port: btcUri.port || process.env.BTCEXP_GROESTLCOIND_PORT || 1441,
 
 		authType: authType,
 
@@ -47,7 +47,7 @@ function loadFreshRpcCredentials() {
 
 		authCookieFilepath: authCookieFilepath,
 
-		timeout: parseInt(btcUri.query.timeout || process.env.BTCEXP_BITCOIND_RPC_TIMEOUT || 5000),
+		timeout: parseInt(btcUri.query.timeout || process.env.BTCEXP_GROESTLCOIND_RPC_TIMEOUT || 5000),
 	};
 }
 

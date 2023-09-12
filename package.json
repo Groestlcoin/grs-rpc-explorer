@@ -40,7 +40,7 @@
 		"groestlcoinjs-lib": "^6.0.0",
 		"body-parser": "^1.20.2",
 		"bootstrap": "^5.2.3",
-		"bs58check": "^3.0.1",
+		"bs58grscheck": "^2.1.2",
 		"chart.js": "^4.3.0",
 		"compression": "^1.7.4",
 		"cookie-parser": "^1.4.6",

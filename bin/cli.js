@@ -16,19 +16,19 @@ const args = require('meow')(`
 	  -a, --basic-auth-password <..> protect web interface with a password [default: no password]
 	  -C, --coin <coin>			  crypto-coin to enable [default: GRS]
 
-	  -b, --bitcoind-uri <uri>	   connection URI for groestlcoind rpc (overrides the options below)
-	  -H, --bitcoind-host <host>	 hostname for groestlcoind rpc [default: 127.0.0.1]
-	  -P, --bitcoind-port <port>	 port for groestlcoind rpc [default: 1441]
-	  -c, --bitcoind-cookie <path>   path to groestlcoind cookie file [default: ~/.groestlcoin/.cookie]
-	  -u, --bitcoind-user <user>	 username for groestlcoind rpc [default: none]
-	  -w, --bitcoind-pass <pass>	 password for groestlcoind rpc [default: none]
+	  -b, --groestlcoind-uri <uri>	   connection URI for groestlcoind rpc (overrides the options below)
+	  -H, --groestlcoind-host <host>	 hostname for groestlcoind rpc [default: 127.0.0.1]
+	  -P, --groestlcoind-port <port>	 port for groestlcoind rpc [default: 1441]
+	  -c, --groestlcoind-cookie <path>   path to groestlcoind cookie file [default: ~/.groestlcoin/.cookie]
+	  -u, --groestlcoind-user <user>	 username for groestlcoind rpc [default: none]
+	  -w, --groestlcoind-pass <pass>	 password for groestlcoind rpc [default: none]
 
 	  --address-api <option>		 api to use for address queries (options: electrum, blockchair.com) [default: none]
 	  -E, --electrum-servers <..>   comma separated list of electrum servers to use for address queries; only used if --address-api=electrum [default: none]
 
 	  --rpc-allowall				 allow all rpc commands [default: false]
 	  --rpc-blacklist <methods>	  comma separated list of rpc commands to block [default: see in config.js]
-	  --cookie-secret <secret>	   secret key for signed cookie hmac generation [default: hmac derive from bitcoind pass]
+	  --cookie-secret <secret>	   secret key for signed cookie hmac generation [default: hmac derive from groestlcoind pass]
 	  --demo						 enable demoSite mode [default: disabled]
 	  --no-rates					 disable fetching of currency exchange rates [default: enabled]
 	  --slow-device-mode			 disable performance-intensive tasks (e.g. UTXO set fetching) [default: enabled]
@@ -43,7 +43,7 @@ const args = require('meow')(`
 	  -v, --version				  output version number
 
 	Examples
-	  $ grs-rpc-explorer --port 8080 --bitcoind-port 18443 --bitcoind-cookie ~/.groestlcoin/regtest/.cookie
+	  $ grs-rpc-explorer --port 8080 --groestlcoind-port 18443 --groestlcoind-cookie ~/.groestlcoin/regtest/.cookie
 	  $ grs-rpc-explorer -p 8080 -P 18443 -c ~/.groestlcoin/regtest.cookie
 
 	Or using connection URIs
@@ -51,7 +51,7 @@ const args = require('meow')(`
 	  $ grs-rpc-explorer -b groestlcoin://127.0.0.1:18443/?cookie=$HOME/.groestlcoin/regtest/.cookie
 
 	All options may also be specified as environment variables
-	  $ BTCEXP_PORT=8080 BTCEXP_BITCOIND_PORT=18443 BTCEXP_BITCOIND_COOKIE=~/.groestlcoin/regtest/.cookie grs-rpc-explorer
+	  $ BTCEXP_PORT=8080 BTCEXP_GROESTLCOIND_PORT=18443 BTCEXP_GROESTLCOIND_COOKIE=~/.groestlcoin/regtest/.cookie grs-rpc-explorer
 
 
 `, {
@@ -60,12 +60,12 @@ const args = require('meow')(`
 			host: {alias:'i'},
 			basicAuthPassword: {alias:'a'},
 			coin: {alias:'C'},
-			bitcoindUri: {alias:'b'},
-			bitcoindHost: {alias:'H'},
-			bitcoindPort: {alias:'P'},
-			bitcoindCookie: {alias:'c'},
-			bitcoindUser: {alias:'u'},
-			bitcoindPass: {alias:'w'},
+			groestlcoindUri: {alias:'b'},
+			groestlcoindHost: {alias:'H'},
+			groestlcoindPort: {alias:'P'},
+			groestlcoindCookie: {alias:'c'},
+			groestlcoindUser: {alias:'u'},
+			groestlcoindPass: {alias:'w'},
 			demo: {},
 			rpcAllowall: {},
 			electrumServers: {alias:'E'},

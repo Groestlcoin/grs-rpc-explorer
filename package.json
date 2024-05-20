@@ -35,7 +35,7 @@
 		"url": "git+https://github.com/groestlcoin/grs-rpc-explorer.git"
 	},
 	"dependencies": {
-		"@janoside/app-utils": "github:janoside/app-utils#0f52c7028951c1c2b67b06b2ce50fd74001bba93",
+		"@janoside/app-utils": "github:janoside/app-utils#ba4c23d3f",
 		"async": "^3.2.4",
 		"axios": "^1.4.0",
 		"basic-auth": "^2.0.1",
@@ -59,7 +59,7 @@
 		"express-session": "^1.17.3",
 		"jayson": "^4.1.0",
 		"lru-cache": "^10.0.0",
-		"markdown-it": "^13.0.1",
+		"markdown-it": "^14.0.0",
 		"md5": "^2.3.0",
 		"memorystore": "^1.6.7",
 		"meow": "^9.0.0",

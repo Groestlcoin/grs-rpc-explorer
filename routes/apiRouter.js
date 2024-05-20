@@ -867,32 +867,37 @@ router.get("/mempool/summary", function(req, res, next) {
 	}).catch(next);
 });
 
-router.get("/mempool/fees", function(req, res, next) {
+router.get("/mempool/fees", asyncHandler(async (req, res, next) => {
 	let feeConfTargets = [1, 2, 3, 4];
-	coreApi.getSmartFeeEstimates("CONSERVATIVE", feeConfTargets).then(function(rawSmartFeeEstimates){
-		let smartFeeEstimates = {};
+	let rawSmartFeeEstimates = await coreApi.getSmartFeeEstimates("CONSERVATIVE", feeConfTargets);
+	let smartFeeEstimates = {};
 
-		for (let i = 0; i < feeConfTargets.length; i++) {
-			let rawSmartFeeEstimate = rawSmartFeeEstimates[i];
-			if (rawSmartFeeEstimate.errors) {
-				smartFeeEstimates[feeConfTargets[i]] = "?";
-
-			} else {
-				smartFeeEstimates[feeConfTargets[i]] = parseInt(new Decimal(rawSmartFeeEstimate.feerate).times(coinConfig.baseCurrencyUnit.multiplier).dividedBy(1000));
-			}
+	for (let i = 0; i < feeConfTargets.length; i++) {
+		let rawSmartFeeEstimate = rawSmartFeeEstimates[i];
+		if (rawSmartFeeEstimate.errors) {
+			smartFeeEstimates[feeConfTargets[i]] = "?";
+		} else {
+			smartFeeEstimates[feeConfTargets[i]] = parseInt(new Decimal(rawSmartFeeEstimate.feerate).times(coinConfig.baseCurrencyUnit.multiplier).dividedBy(1000));
 		}
+	}
 
-		let results = {
-			"nextBlock":smartFeeEstimates[1],
-			"2min":smartFeeEstimates[2],
-			"3min":smartFeeEstimates[3],
-			"4min":smartFeeEstimates[4]
-		};
+	let results = {
+		"nextBlock":{"smart":smartFeeEstimates[1]},
+		"2min":smartFeeEstimates[2],
+		"3min":smartFeeEstimates[3],
+		"4min":smartFeeEstimates[4]
+	};
 
-		res.json(results);
+	let nextBlockEstimate = await coreApi.getNextBlockEstimate();
+	if (nextBlockEstimate != undefined && nextBlockEstimate.minFeeRate != undefined) {
+		//console.log("nextBlockEstimate: " + JSON.stringify(nextBlockEstimate));
+		results.nextBlock.min = parseInt(nextBlockEstimate.minFeeRate);
+		results.nextBlock.max = parseInt(nextBlockEstimate.maxFeeRate);
+		results.nextBlock.median = parseInt(nextBlockEstimate.medianFeeRate);
+	}
 
-	}).catch(next);
-});
+	res.json(results);
+}));
 
 
 

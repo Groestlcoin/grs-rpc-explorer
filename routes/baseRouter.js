@@ -859,7 +859,7 @@ router.get("/block-stats", asyncHandler(async (req, res, next) => {
 
 router.get("/mining-template", asyncHandler(async (req, res, next) => {
 	// url changed
-	res.redirect("./next-block");
+	res.redirect(301, "./next-block");
 }));
 
 router.get("/next-block", asyncHandler(async (req, res, next) => {
@@ -1359,6 +1359,13 @@ router.get("/block-analysis", function(req, res, next) {
 
 	next();
 });
+
+/*
+router.get("/tx/tx/:transactionId", asyncHandler(async (req, res, next) => {
+	res.redirect(301, `${config.baseUrl}tx/${req.params.transactionId}`);
+
+	return;
+}));*/
 
 router.get("/tx/:transactionId@:blockHeight", asyncHandler(async (req, res, next) => {
 	req.query.blockHeight = req.params.blockHeight;

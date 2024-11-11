@@ -61,7 +61,9 @@ const crawlerBotUserAgentStrings = {
 	"moz": new RegExp("dotbot", "i"),
 	"semrush": new RegExp("SemrushBot", "i"),
 	"majestic": new RegExp("MJ12bot", "i"),
-	"python-requests": new RegExp("python-requests", "i")
+	"python-requests": new RegExp("python-requests", "i"),
+	"openai": new RegExp("OAI-SearchBot", "i"),
+	"unidentifiedCrawler": new RegExp("Test Certificate Info", "i"),
 };
 
 const ipMemoryCache = {};

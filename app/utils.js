@@ -64,6 +64,9 @@ const crawlerBotUserAgentStrings = {
 	"python-requests": new RegExp("python-requests", "i"),
 	"openai": new RegExp("OAI-SearchBot", "i"),
 	"unidentifiedCrawler": new RegExp("Test Certificate Info", "i"),
+	"amazon": new RegExp("amazonbot", "i"),
+	"bytedance": new RegExp("bytespider", "i"),
+	"scrapy": new RegExp("Scrapy", "i"),
 };
 
 const ipMemoryCache = {};
@@ -977,7 +980,7 @@ function logError(errorId, err, optionalUserData = {}, logStacktrace=true) {
 		};
 	}
 
-	if (optionalUserData && err.message) {
+	if (optionalUserData && err && err.message) {
 		optionalUserData.errorMsg = err.message;
 	}
 
@@ -1371,6 +1374,26 @@ function bip32Addresses(extPubkey, addressType, account, limit=10, offset=0) {
 	return addresses;
 }
 
+function expressRequestToJson(req) {
+	return {
+		method: req.method,
+		url: req.url,
+		headers: req.headers,
+		query: req.query,
+		params: req.params,
+		body: req.body,
+		cookies: req.cookies,
+		signedCookies: req.signedCookies,
+		ip: req.ip,
+		ips: req.ips,
+		protocol: req.protocol,
+		secure: req.secure,
+		originalUrl: req.originalUrl,
+		hostname: req.hostname,
+		baseUrl: req.baseUrl,
+	};
+}
+
 function difficultyAdjustmentEstimates(eraStartBlockHeader, currentBlockHeader) {
 	let difficultyPeriod = parseInt(Math.floor(currentBlockHeader.height / coinConfig.difficultyAdjustmentBlockCount));
 	let blocksUntilDifficultyAdjustment = ((difficultyPeriod + 1) * coinConfig.difficultyAdjustmentBlockCount) - currentBlockHeader.height;
@@ -1607,6 +1630,31 @@ const perfLogNewItem = (tags) => {
 	};
 };
 
+function trackAppEvent(name, count=1, params=null) {
+	if (!global.appEventStats[name]) {
+		global.appEventStats[name] = {count:0};
+	}
+
+	global.appEventStats[name].count += count;
+	global.appEventStats[name].last = new Date();
+
+	if (params != null) {
+		if (global.appEventStats[name].params == null) {
+			global.appEventStats[name].params = {};
+		}
+
+		let props = objectProperties(params);
+
+		props.forEach(prop => {
+			if (global.appEventStats[name].params[`${prop}[${params[prop]}]`] == null) {
+				global.appEventStats[name].params[`${prop}[${params[prop]}]`] = {count: 0};
+			}
+
+			global.appEventStats[name].params[`${prop}[${params[prop]}]`].count += count;
+		});
+	}
+}
+
 module.exports = {
 	reflectPromise: reflectPromise,
 	redirectToConnectPageIfNeeded: redirectToConnectPageIfNeeded,
@@ -1669,5 +1717,7 @@ module.exports = {
 	awaitPromises: awaitPromises,
 	perfLogNewItem: perfLogNewItem,
 	perfLog: perfLog,
-	fileCache: fileCache
+	fileCache: fileCache,
+	expressRequestToJson: expressRequestToJson,
+	trackAppEvent: trackAppEvent
 };

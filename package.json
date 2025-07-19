@@ -1,6 +1,6 @@
 {
 	"name": "grs-rpc-explorer",
-	"version": "3.4.0",
+	"version": "3.5.1",
 	"description": "Open-source, self-hosted Groestlcoin explorer",
 	"private": false,
 	"bin": "bin/cli.js",
